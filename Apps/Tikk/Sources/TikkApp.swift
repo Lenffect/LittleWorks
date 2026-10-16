@@ -10,7 +10,8 @@ struct TikkApp: App {
         MenuBarExtra {
             MenuView(model: model)
         } label: {
-            MenuBarLabel(model: model)
+            // Placeholder: the real item is drawn by MenuBarItem.update (called every second).
+            Image(systemName: "clock")
         }
         .menuBarExtraStyle(.window)
 
