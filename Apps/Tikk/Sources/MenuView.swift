@@ -6,7 +6,7 @@ struct MenuView: View {
     @State private var newClient = ""
     @State private var screen: Screen = .main
 
-    enum Screen: Equatable { case main, overview, settings, edit(UUID) }
+    enum Screen: Equatable { case main, overview, report, settings, edit(UUID) }
 
     /// Same size for every screen, so the popover never resizes or jumps.
     static let size = CGSize(width: 520, height: 480)
@@ -22,8 +22,10 @@ struct MenuView: View {
             page("Overzicht") {
                 OverviewView(model: model) { screen = .edit($0) }
             }
+        case .report:
+            page("Rapport") { ReportView(model: model) }
         case .settings:
-            page("Instellingen") { SettingsView() }
+            page("Instellingen") { SettingsView(model: model) }
         case .edit(let id):
             if let entry = model.entry(id: id) {
                 EntryEditor(model: model, entry: entry) { screen = .overview }
@@ -89,10 +91,8 @@ struct MenuView: View {
 
             Divider()
             Button("Overzicht openen") { screen = .overview }
+            Button("Rapport per klant…") { screen = .report }
             Button("Instellingen…") { screen = .settings }
-            Button("Back-up maken…") { model.exportBackup() }
-            Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
-            if let m = model.statusMessage { Text(m).foregroundStyle(.secondary).font(.caption) }
             if let e = model.errorMessage { Text(e).foregroundStyle(.red).font(.caption) }
             Spacer(minLength: 0)
             Button("Stop tikk.") { NSApp.terminate(nil) }

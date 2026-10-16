@@ -25,6 +25,10 @@ final class AppModel {
     private(set) var weekByClient: [UUID: TimeInterval] = [:]
     var errorMessage: String?
     var statusMessage: String?
+    /// Result of the last automatic backup (shown in settings).
+    private(set) var autoBackupStatus: String?
+    /// Bumped on every reload, so screens can refresh when data changed.
+    private(set) var dataVersion = 0
 
     private var sleepStartedAt: Date?
     private var ticker: Timer?
@@ -42,6 +46,7 @@ final class AppModel {
         engine = TimerEngine(store: store)
         reload()
         recoverAfterCrash()
+        autoBackup()
         observeSleep()
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
@@ -121,6 +126,7 @@ final class AppModel {
             return false
         } catch { errorMessage = error.localizedDescription; return false }
         reload()
+        autoBackup()
         return true
     }
 
@@ -132,14 +138,58 @@ final class AppModel {
         } catch { errorMessage = "Back-up mislukt: \(error.localizedDescription)" }
     }
 
+    /// Writes the rolling backup file when enabled. Never throws; failures show up in settings.
+    func autoBackup() {
+        guard AutoBackup.isEnabled else { autoBackupStatus = "Automatische back-up staat uit."; return }
+        do {
+            let url = try AutoBackup.write(try Backup.snapshot(from: context))
+            autoBackupStatus = "Laatste back-up \(Date().formatted(date: .omitted, time: .standard)) → \(url.path)"
+        } catch {
+            autoBackupStatus = "Automatische back-up mislukt: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Archived clients, rates, report
+
+    var archivedClients: [Client] { allClients.filter(\.isArchived) }
+
+    func unarchive(_ client: Client) {
+        if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == client.id })).first {
+            r.isArchived = false
+            perform {}
+        }
+    }
+
+    func setRate(_ rate: Decimal?, for clientId: UUID) {
+        if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == clientId })).first {
+            r.hourlyRate = rate
+            perform {}
+        }
+    }
+
+    /// Hours per client in `interval` (archived clients included), optionally for one client.
+    func report(in interval: DateInterval, clientId: UUID? = nil) -> [ReportRow] {
+        let entries = (try? store.entries(in: interval)) ?? []
+        let seconds = Totals.secondsPerClient(entries: entries, in: interval, now: Date())
+        return allClients
+            .filter { clientId == nil || $0.id == clientId }
+            .compactMap { c in
+                guard let s = seconds[c.id], s > 0 else { return nil }
+                return ReportRow(client: c, seconds: s)
+            }
+            .sorted { $0.seconds > $1.seconds }
+    }
+
     private func perform(_ work: () throws -> Void) {
         do { try work(); try context.save() } catch { errorMessage = error.localizedDescription }
         reload()
+        autoBackup()
     }
 
     // MARK: - Data
 
     private func reload() {
+        dataVersion += 1
         now = Date()
         let cal = Calendar.current
         clients = ((try? context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [])
@@ -217,4 +267,12 @@ enum Format {
         let m = Int(s) / 60
         return String(format: "%d:%02d", m / 60, m % 60)
     }
+}
+
+struct ReportRow: Identifiable {
+    let client: Client
+    let seconds: TimeInterval
+    var id: UUID { client.id }
+    var hours: Double { seconds / 3600 }
+    var income: Decimal? { client.hourlyRate.map { $0 * Decimal(hours) } }
 }

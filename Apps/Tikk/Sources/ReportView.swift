@@ -1,0 +1,141 @@
+import SwiftUI
+import LittleWorksCore
+
+struct ReportView: View {
+    let model: AppModel
+
+    enum Preset: String, CaseIterable, Identifiable {
+        case thisWeek = "Deze week", lastWeek = "Vorige week"
+        case thisMonth = "Deze maand", lastMonth = "Vorige maand"
+        case thisYear = "Dit jaar", custom = "Aangepast"
+        var id: String { rawValue }
+    }
+
+    @State private var preset: Preset = .thisMonth
+    @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+    @State private var customEnd = Date()
+    @State private var clientFilter: UUID?
+    @State private var rows: [ReportRow] = []
+    @AppStorage(SettingsKey.reportShowIncome) private var showIncome = false
+
+    private var interval: DateInterval {
+        let cal = Calendar.current
+        let now = Date()
+        func range(_ c: Calendar.Component, offset: Int = 0) -> DateInterval {
+            let anchor = cal.date(byAdding: c, value: offset, to: now)!
+            return cal.dateInterval(of: c, for: anchor) ?? DateInterval(start: now, duration: 1)
+        }
+        switch preset {
+        case .thisWeek: return range(.weekOfYear)
+        case .lastWeek: return range(.weekOfYear, offset: -1)
+        case .thisMonth: return range(.month)
+        case .lastMonth: return range(.month, offset: -1)
+        case .thisYear: return range(.year)
+        case .custom:
+            let start = cal.startOfDay(for: min(customStart, customEnd))
+            let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: max(customStart, customEnd)))!
+            return DateInterval(start: start, end: end)
+        }
+    }
+
+    private var refreshKey: String {
+        "\(Int(Date().timeIntervalSince1970 / 60))-\(preset)-\(customStart)-\(customEnd)-\(clientFilter?.uuidString ?? "all")-\(model.dataVersion)"
+    }
+
+    private var totalSeconds: TimeInterval { rows.reduce(0) { $0 + $1.seconds } }
+    private var totalIncome: Decimal { rows.compactMap(\.income).reduce(0, +) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Picker("Periode", selection: $preset) {
+                    ForEach(Preset.allCases) { Text($0.rawValue).tag($0) }
+                }
+                Picker("Klant", selection: $clientFilter) {
+                    Text("Alle klanten").tag(UUID?.none)
+                    ForEach(model.allClients) { Text($0.name).tag(UUID?.some($0.id)) }
+                }
+            }
+            if preset == .custom {
+                HStack {
+                    DatePicker("Van", selection: $customStart, displayedComponents: .date)
+                    DatePicker("tot en met", selection: $customEnd, displayedComponents: .date)
+                }
+            }
+            Text(periodLabel).font(.caption).foregroundStyle(.secondary)
+            Toggle("Verwachte inkomsten tonen (uurloon)", isOn: $showIncome)
+
+            List {
+                if rows.isEmpty {
+                    Text("Geen uren in deze periode.").foregroundStyle(.secondary)
+                }
+                ForEach(rows) { row in
+                    HStack {
+                        Text(row.client.name)
+                        Spacer()
+                        if showIncome {
+                            RateField(client: row.client) { model.setRate($0, for: row.client.id) }
+                        }
+                        VStack(alignment: .trailing, spacing: 0) {
+                            Text(Format.short(row.seconds)).monospacedDigit()
+                            Text(String(format: "%.2f u", row.hours).replacingOccurrences(of: ".", with: ","))
+                                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                        .frame(width: 70, alignment: .trailing)
+                        if showIncome {
+                            Text(row.income.map { $0.formatted(.currency(code: "EUR")) } ?? "–")
+                                .monospacedDigit().frame(width: 90, alignment: .trailing)
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            HStack {
+                Text("Totaal").font(.headline)
+                Spacer()
+                Text(Format.short(totalSeconds)).monospacedDigit().font(.headline)
+                if showIncome {
+                    Text(totalIncome.formatted(.currency(code: "EUR")))
+                        .monospacedDigit().font(.headline).frame(width: 90, alignment: .trailing)
+                }
+            }
+            if showIncome {
+                Text("Indicatie: uren × uurloon, zonder btw of kosten.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding([.horizontal, .bottom], 14)
+        .task(id: refreshKey) { rows = model.report(in: interval, clientId: clientFilter) }
+    }
+
+    private var periodLabel: String {
+        let i = interval
+        let last = i.end.addingTimeInterval(-1)
+        return "\(i.start.formatted(date: .abbreviated, time: .omitted)) – \(last.formatted(date: .abbreviated, time: .omitted))"
+    }
+}
+
+/// Hourly rate input for one client.
+private struct RateField: View {
+    let client: Client
+    let onChange: (Decimal?) -> Void
+    @State private var rate: Decimal?
+
+    init(client: Client, onChange: @escaping (Decimal?) -> Void) {
+        self.client = client
+        self.onChange = onChange
+        _rate = State(initialValue: client.hourlyRate)
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Text("€")
+            TextField("uurloon", value: $rate, format: .number)
+                .multilineTextAlignment(.trailing)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 64)
+                .onChange(of: rate) { onChange(rate) }
+            Text("/u").foregroundStyle(.secondary)
+        }
+    }
+}

@@ -4,6 +4,10 @@ enum SettingsKey {
     static let showUrencriterium = "showUrencriterium"
     static let urencriteriumTarget = "urencriteriumTarget"
     static let defaultTarget = 1225.0
+    static let autoBackupEnabled = "autoBackupEnabled"
+    static let autoBackupPath = "autoBackupPath"
+    static let defaultBackupPath = NSHomeDirectory() + "/Desktop/LittleWorks/Backups"
+    static let reportShowIncome = "reportShowIncome"
 }
 
 /// Progress of hours worked this calendar year towards the urencriterium.
@@ -27,30 +31,5 @@ struct UrencriteriumBar: View {
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
         }
-    }
-}
-
-struct SettingsView: View {
-    @AppStorage(SettingsKey.showUrencriterium) private var show = true
-    @AppStorage(SettingsKey.urencriteriumTarget) private var target = SettingsKey.defaultTarget
-
-    var body: some View {
-        Form {
-            Section("Urencriterium") {
-                Toggle("Urencriterium tonen", isOn: $show)
-                HStack {
-                    Text("Doel (uren per jaar)")
-                    Spacer()
-                    TextField("", value: $target, format: .number.grouping(.never))
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                        .textFieldStyle(.roundedBorder)
-                }
-                .disabled(!show)
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 380)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }

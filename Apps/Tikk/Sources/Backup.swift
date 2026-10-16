@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwiftData
+import UniformTypeIdentifiers
 import LittleWorksCore
 
 struct BackupFile: Codable {
@@ -10,25 +11,106 @@ struct BackupFile: Codable {
     var entries: [TimeEntry]
 }
 
+enum BackupFormat: String, CaseIterable {
+    case json, csv
+
+    var title: String {
+        switch self {
+        case .json: "JSON (volledige back-up)"
+        case .csv: "CSV (voor Excel)"
+        }
+    }
+    var type: UTType { self == .json ? .json : .commaSeparatedText }
+}
+
 enum Backup {
-    /// Writes all clients (incl. archived) and entries to a JSON file the user picks.
     @MainActor
-    static func export(from context: ModelContext) throws -> URL? {
+    static func snapshot(from context: ModelContext) throws -> BackupFile {
         let clients = try context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)])).map(\.value)
         let entries = try context.fetch(FetchDescriptor<EntryRecord>(sortBy: [SortDescriptor(\.startTime)])).map(\.value)
+        return BackupFile(exportedAt: Date(), clients: clients, entries: entries)
+    }
+
+    static func data(for file: BackupFile, format: BackupFormat) throws -> Data {
+        switch format {
+        case .json:
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            return try encoder.encode(file)
+        case .csv:
+            return Data(csv(for: file).utf8)
+        }
+    }
+
+    /// Dutch Excel style: `;` as separator, decimal comma.
+    private static func csv(for file: BackupFile) -> String {
+        let names = Dictionary(uniqueKeysWithValues: file.clients.map { ($0.id, $0.name) })
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "nl_NL")
+        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        func q(_ s: String) -> String { "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
+
+        var lines = ["Klant;Start;Eind;Uren;Notitie"]
+        for e in file.entries {
+            let hours = String(format: "%.2f", e.duration(at: Date()) / 3600).replacingOccurrences(of: ".", with: ",")
+            lines.append([
+                q(names[e.clientId] ?? "Onbekend"),
+                fmt.string(from: e.startTime),
+                e.endTime.map { fmt.string(from: $0) } ?? "loopt",
+                hours,
+                q(e.note ?? ""),
+            ].joined(separator: ";"))
+        }
+        return "\u{FEFF}" + lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Asks where to save and in which format, then writes the file.
+    @MainActor
+    static func export(from context: ModelContext) throws -> URL? {
+        let file = try snapshot(from: context)
 
         let panel = NSSavePanel()
         let day = Date.now.formatted(.iso8601.year().month().day())
-        panel.nameFieldStringValue = "tikk-backup-\(day).json"
-        panel.allowedContentTypes = [.json]
+        let picker = FormatPicker(panel: panel, baseName: "tikk-backup-\(day)")
+        panel.accessoryView = picker.view
+        picker.apply()
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(BackupFile(exportedAt: Date(), clients: clients, entries: entries))
-        try data.write(to: url, options: .atomic)
+        try data(for: file, format: picker.selected).write(to: url, options: .atomic)
         return url
+    }
+}
+
+/// Format popup inside the save panel.
+@MainActor
+private final class FormatPicker: NSObject {
+    let view: NSView
+    private let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let panel: NSSavePanel
+    private let baseName: String
+
+    var selected: BackupFormat { BackupFormat.allCases[max(0, popup.indexOfSelectedItem)] }
+
+    init(panel: NSSavePanel, baseName: String) {
+        self.panel = panel
+        self.baseName = baseName
+        popup.addItems(withTitles: BackupFormat.allCases.map(\.title))
+        let label = NSTextField(labelWithString: "Formaat:")
+        let stack = NSStackView(views: [label, popup])
+        stack.spacing = 8
+        stack.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        view = stack
+        super.init()
+        popup.target = self
+        popup.action = #selector(changed)
+    }
+
+    @objc private func changed() { apply() }
+
+    func apply() {
+        panel.allowedContentTypes = [selected.type]
+        panel.nameFieldStringValue = "\(baseName).\(selected.rawValue)"
     }
 }
