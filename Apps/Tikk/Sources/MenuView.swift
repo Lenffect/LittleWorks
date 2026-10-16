@@ -53,6 +53,7 @@ struct MenuView: View {
 
             HStack {
                 TextField("Nieuwe klant", text: $newClient).textFieldStyle(.roundedBorder).onSubmit(add)
+                .onChange(of: newClient) { model.errorMessage = nil }
                 Button("Voeg toe", action: add)
                     .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -99,7 +100,6 @@ struct MenuView: View {
     }
 
     private func add() {
-        model.addClient(name: newClient)
-        newClient = ""
+        if model.addClient(name: newClient) { newClient = "" }
     }
 }

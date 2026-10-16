@@ -114,11 +114,22 @@ final class AppModel {
         updateEntry(e)
     }
 
-    func addClient(name: String) {
+    /// Adds a client. Returns false (and sets errorMessage) when the name is empty or already taken
+    /// (case-insensitive, archived clients included).
+    @discardableResult
+    func addClient(name: String) -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return false }
+        if let existing = allClients.first(where: { $0.name.compare(trimmed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }) {
+            errorMessage = existing.isArchived
+                ? "\"\(existing.name)\" bestaat al als gearchiveerde klant. Herstel die onder Klanten."
+                : "Er is al een klant met de naam \"\(existing.name)\"."
+            return false
+        }
+        errorMessage = nil
         context.insert(ClientRecord(Client(name: trimmed)))
         perform {}
+        return true
     }
 
     func archive(_ client: Client) {

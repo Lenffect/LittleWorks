@@ -15,9 +15,11 @@ struct ClientsView: View {
             Section {
                 HStack {
                     TextField("Nieuwe klant", text: $newClient).onSubmit(add)
+                .onChange(of: newClient) { model.errorMessage = nil }
                     Button("Voeg toe", action: add)
                         .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                if let e = model.errorMessage { Text(e).foregroundStyle(.red).font(.caption) }
             }
             Section("Actief") {
                 if active.isEmpty { Text("Nog geen klanten.").foregroundStyle(.secondary) }
@@ -48,7 +50,6 @@ struct ClientsView: View {
     }
 
     private func add() {
-        model.addClient(name: newClient)
-        newClient = ""
+        if model.addClient(name: newClient) { newClient = "" }
     }
 }
