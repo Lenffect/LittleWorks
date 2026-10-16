@@ -6,7 +6,6 @@ struct SettingsView: View {
     let model: AppModel
     @AppStorage(SettingsKey.showUrencriterium) private var show = true
     @AppStorage(SettingsKey.urencriteriumTarget) private var target = SettingsKey.defaultTarget
-    @AppStorage(SettingsKey.menuBarStyle) private var menuBarStyle = MenuBarStyle.both.rawValue
     @AppStorage(SettingsKey.animations) private var animations = true
     @AppStorage(SettingsKey.showMenuSummary) private var showMenuSummary = true
     @AppStorage(SettingsKey.askNoteOnStop) private var askNote = true
@@ -71,9 +70,6 @@ struct SettingsView: View {
 
             Section("Algemeen") {
                 Toggle("Toon totalen en urencriterium in het menu", isOn: $showMenuSummary)
-                Picker("Menubalk toont", selection: $menuBarStyle) {
-                    ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0.rawValue) }
-                }
                 Toggle("Animaties (hover en tikkende klok)", isOn: $animations)
                 Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
                 Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))

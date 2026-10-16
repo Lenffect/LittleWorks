@@ -7,7 +7,6 @@ enum SettingsKey {
     static let autoBackupEnabled = "autoBackupEnabled"
     static let autoBackupPath = "autoBackupPath"
     static let defaultBackupPath = NSHomeDirectory() + "/Desktop/LittleWorks/Backups"
-    static let menuBarStyle = "menuBarStyle"
     static let animations = "animationsEnabled"
     static let showMenuSummary = "showMenuSummary"
     static let askNoteOnStop = "askNoteOnStop"
