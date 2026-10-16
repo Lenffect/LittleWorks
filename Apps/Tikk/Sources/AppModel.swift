@@ -83,6 +83,26 @@ final class AppModel {
         }
     }
 
+    /// All entries grouped per calendar day (split at midnight), newest day first.
+    func overviewDays() -> [DayGroup] {
+        let cal = Calendar.current
+        let now = Date()
+        let names = Dictionary(
+            uniqueKeysWithValues: ((try? context.fetch(FetchDescriptor<ClientRecord>())) ?? []).map { ($0.id, $0.name) })
+        let entries = (try? store.entries(in: DateInterval(start: .distantPast, end: .distantFuture))) ?? []
+        var byDay: [Date: [DayRow]] = [:]
+        for entry in entries {
+            for seg in Totals.segments(of: entry, now: now, calendar: cal) {
+                byDay[seg.day, default: []].append(DayRow(
+                    clientName: names[entry.clientId] ?? "Onbekend",
+                    start: seg.start, end: seg.end, isRunning: entry.isActive && seg.end == now))
+            }
+        }
+        return byDay.keys.sorted(by: >).map { day in
+            DayGroup(day: day, rows: byDay[day]!.sorted { $0.start > $1.start })
+        }
+    }
+
     func exportBackup() {
         do {
             if let url = try Backup.export(from: context) { statusMessage = "Back-up opgeslagen: \(url.lastPathComponent)" }

@@ -15,5 +15,9 @@ struct TikkApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Window("tikk. overzicht", id: "overview") {
+            OverviewView(model: model)
+        }
     }
 }

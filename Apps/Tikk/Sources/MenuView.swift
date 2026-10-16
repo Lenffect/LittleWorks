@@ -3,6 +3,7 @@ import LittleWorksCore
 
 struct MenuView: View {
     let model: AppModel
+    @Environment(\.openWindow) private var openWindow
     @State private var newClient = ""
 
     var body: some View {
@@ -44,6 +45,10 @@ struct MenuView: View {
                 .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
 
             Divider()
+            Button("Overzicht openen") {
+                openWindow(id: "overview")
+                NSApp.activate(ignoringOtherApps: true)
+            }
             Button("Back-up maken…") { model.exportBackup() }
             Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
             if let m = model.statusMessage { Text(m).foregroundStyle(.secondary).font(.caption) }
