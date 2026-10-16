@@ -70,7 +70,7 @@ struct SettingsView: View {
 
             Section("Algemeen") {
                 Toggle("Toon totalen en urencriterium in het menu", isOn: $showMenuSummary)
-                Toggle("Animaties (hover en tikkende klok)", isOn: $animations)
+                Toggle("Animaties in het menu (hover en doorrollende timer)", isOn: $animations)
                 Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
                 Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
                 Toggle("Animatie in de menubalk terwijl de timer loopt", isOn: $menuAnimation)
