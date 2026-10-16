@@ -11,6 +11,10 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.autoBackupPath) private var backupPath = SettingsKey.defaultBackupPath
 
     @State private var deleting: Client?
+    @State private var notificationStatus = ""
+    @AppStorage(ReminderSettings.enabledKey) private var remind = false
+    @AppStorage(ReminderSettings.firstKey) private var remindFirst = ReminderSettings.defaultFirst
+    @AppStorage(ReminderSettings.everyKey) private var remindEvery = ReminderSettings.defaultEvery
 
     var body: some View {
         if let client = deleting {
@@ -33,6 +37,21 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
                 .disabled(!show)
+            }
+
+            Section("Herinnering") {
+                Toggle("Vraag of ik nog werk aan de klant", isOn: $remind)
+                    .onChange(of: remind) { if remind { NotificationService.shared.requestPermission() } }
+                Stepper("Eerste herinnering na \(remindFirst) min", value: $remindFirst, in: 1...480, step: 5)
+                    .disabled(!remind)
+                Stepper("Daarna elke \(remindEvery) min", value: $remindEvery, in: 1...480, step: 5)
+                    .disabled(!remind)
+                HStack {
+                    Button("Stuur testmelding") { model.sendTestReminder() }
+                    Spacer()
+                    Text(notificationStatus).font(.caption).foregroundStyle(.secondary)
+                }
+                .task { notificationStatus = await NotificationService.shared.statusText() }
             }
 
             Section("Back-up") {

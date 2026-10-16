@@ -48,6 +48,10 @@ final class AppModel {
         recoverAfterCrash()
         autoBackup()
         observeSleep()
+        NotificationService.shared.setUp()
+        NotificationService.shared.onStop = { [weak self] id in
+            if self?.active?.id == id { self?.stop() }
+        }
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -280,8 +284,34 @@ final class AppModel {
         }
     }
 
+    private var nextReminderAt: Date?
+    private var reminderEntryId: UUID?
+
+    /// "Still working on X?" reminder: first after N minutes of a running timer, then every M minutes.
+    private func checkReminder() {
+        guard ReminderSettings.isEnabled, let entry = active, let client = activeClient else {
+            nextReminderAt = nil; reminderEntryId = nil; return
+        }
+        if reminderEntryId != entry.id {
+            reminderEntryId = entry.id
+            var next = entry.startTime.addingTimeInterval(ReminderSettings.first)
+            while next <= now { next = next.addingTimeInterval(ReminderSettings.every) }
+            nextReminderAt = next
+        }
+        if let due = nextReminderAt, now >= due {
+            NotificationService.shared.send(clientName: client.name, elapsed: entry.duration(at: now), entryId: entry.id)
+            nextReminderAt = now.addingTimeInterval(ReminderSettings.every)
+        }
+    }
+
+    func sendTestReminder() {
+        NotificationService.shared.send(
+            clientName: activeClient?.name ?? "een klant", elapsed: activeElapsed, entryId: active?.id ?? UUID())
+    }
+
     private func tick() {
         now = Date()
+        checkReminder()
         if active != nil {
             UserDefaults.standard.set(now, forKey: Self.lastSeenKey)
             if Int(now.timeIntervalSince1970) % 60 == 0 { reload() }
