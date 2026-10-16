@@ -4,6 +4,8 @@ import SwiftUI
 struct TikkApp: App {
     @State private var model = AppModel()
 
+    init() { PopoverPosition.shared.start() }
+
     var body: some Scene {
         MenuBarExtra {
             MenuView(model: model)

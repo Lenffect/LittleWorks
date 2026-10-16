@@ -8,14 +8,20 @@ struct MenuView: View {
 
     enum Screen: Equatable { case main, overview, settings, edit(UUID) }
 
+    /// Same size for every screen, so the popover never resizes or jumps.
+    static let size = CGSize(width: 520, height: 480)
+
     var body: some View {
+        content.frame(width: Self.size.width, height: Self.size.height, alignment: .top)
+    }
+
+    @ViewBuilder private var content: some View {
         switch screen {
         case .main: main
         case .overview:
             page("Overzicht") {
                 OverviewView(model: model) { screen = .edit($0) }
             }
-            .frame(width: 560, height: 480)
         case .settings:
             page("Instellingen") { SettingsView() }
         case .edit(let id):
