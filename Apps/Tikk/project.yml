@@ -1,0 +1,34 @@
+name: Tikk
+options:
+  bundleIdPrefix: nl.littleworks
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  LittleWorksCore:
+    path: ../../Packages/LittleWorksCore
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  Tikk:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    dependencies:
+      - package: LittleWorksCore
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: tikk.
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: nl.littleworks.tikk
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_HARDENED_RUNTIME: NO
