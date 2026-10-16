@@ -16,6 +16,14 @@ struct MenuView: View {
     }
 
     @ViewBuilder private var content: some View {
+        if let id = model.notePromptEntryId, let entry = model.entry(id: id) {
+            NotePrompt(model: model, entry: entry)
+        } else {
+            screens
+        }
+    }
+
+    @ViewBuilder private var screens: some View {
         switch screen {
         case .main: main
         case .overview:

@@ -7,6 +7,7 @@ enum SettingsKey {
     static let autoBackupEnabled = "autoBackupEnabled"
     static let autoBackupPath = "autoBackupPath"
     static let defaultBackupPath = NSHomeDirectory() + "/Desktop/LittleWorks/Backups"
+    static let askNoteOnStop = "askNoteOnStop"
     static let reportShowIncome = "reportShowIncome"
 }
 
@@ -31,5 +32,11 @@ struct UrencriteriumBar: View {
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
         }
+    }
+}
+
+enum NoteSetting {
+    static var isEnabled: Bool {
+        UserDefaults.standard.object(forKey: SettingsKey.askNoteOnStop) as? Bool ?? true
     }
 }

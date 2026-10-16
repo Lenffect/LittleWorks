@@ -71,8 +71,35 @@ final class AppModel {
 
     // MARK: - Actions
 
-    func toggle(_ client: Client) { perform { try engine.toggle(clientId: client.id) } }
-    func stop() { perform { try engine.stop() } }
+    /// Entry that just stopped and is waiting for a note (nil when nothing to ask).
+    private(set) var notePromptEntryId: UUID?
+
+    func toggle(_ client: Client) {
+        let previous = active?.id
+        perform { try engine.toggle(clientId: client.id) }
+        promptForNote(ifStopped: previous)
+    }
+
+    func stop() {
+        let previous = active?.id
+        perform { try engine.stop() }
+        promptForNote(ifStopped: previous)
+    }
+
+    private func promptForNote(ifStopped id: UUID?) {
+        guard let id, NoteSetting.isEnabled, entry(id: id)?.endTime != nil else { return }
+        notePromptEntryId = id
+    }
+
+    func dismissNotePrompt() { notePromptEntryId = nil }
+
+    func saveNote(_ text: String, for id: UUID) {
+        defer { notePromptEntryId = nil }
+        guard var e = entry(id: id) else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        e.note = trimmed.isEmpty ? nil : trimmed
+        updateEntry(e)
+    }
 
     func addClient(name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)

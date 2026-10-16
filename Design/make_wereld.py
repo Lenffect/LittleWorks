@@ -4,27 +4,33 @@ from PIL import Image, ImageDraw, ImageFont
 
 OUT = Path(__file__).parent / "Tikk" / "wereld"; OUT.mkdir(parents=True, exist_ok=True)
 P = dict(K="#242424", G="#9A9A9A", g="#6B6B6B", O="#FF8A4C", W="#F8F7F4", C="#5FD6E0", c="#3A8A91", B="#4F7FC1",
-         S="#F2C29B", Y="#F5C842", P="#F4A6B8", p="#D9778F")
+         S="#F2C29B", Y="#F5C842", N="#7AA886")
 
-def tikk(bulb, top, bot, lamp):   # top/bot: ogenrijen (open: 2 px hoog, slapend: 1 dunne lijn)
-    return [
-f"......K{bulb}{bulb}K......", ".......KK.......", "..KKKKKKKKKKKK..", "..KGGGGGGGGGGK..", "..KGKKKKKKKKGK..",
-f"..KGK{top}{top}KK{top}{top}KGK..", f"..KGK{bot}{bot}KK{bot}{bot}KGK..", "..KGKKKKKKKKGK..", "..KKKKKKKKKKKK..", "...KGGGGGGGGK...",
-".KKKGGWWWWGGKKK.", f".KGKGGW{lamp}{lamp}WGGKGK.", ".KKKGGWWWWGGKKK.", "...KGGGGGGGGK...", "...KGGKKKKGGK...", "..KKKKK..KKKKK.."]
+def robot(b, r0, r1, e, c10="WWWW", c11="WWWW", c12="WWWW", eyes_open=True, lamp=None):
+    """Gedeelde robot-basis (familie). b=lichaamskleur, e=oogkleur, c10-12 = borstpaneel."""
+    top, bot = (e, e) if eyes_open else ("K", "c")
+    return [r0, r1, "..KKKKKKKKKKKK..", f"..K{b*10}K..", f"..K{b}KKKKKKKK{b}K..",
+            f"..K{b}K{top}{top}KK{top}{top}K{b}K..", f"..K{b}K{bot}{bot}KK{bot}{bot}K{b}K..", f"..K{b}KKKKKKKK{b}K..", "..KKKKKKKKKKKK..",
+            f"...K{b*8}K...", f".KKK{b}{b}{c10}{b}{b}KKK.", f".K{b}K{b}{b}{c11}{b}{b}K{b}K.", f".KKK{b}{b}{c12}{b}{b}KKK.",
+            f"...K{b*8}K...", f"...K{b}{b}KKKK{b}{b}K...", "..KKKKK..KKKKK.."]
+
+def raise_left(g):   # linkerarm omhoog (werken)
+    g = list(g)
+    for r, left in ((5, "KK"), (6, "KG"), (7, "KG"), (8, "KG")): g[r] = left + g[r][2:]
+    g[9] = "KG." + g[9][3:]; g[10] = "KGGK" + g[10][4:]; g[11] = "KKKK" + g[11][4:]; g[12] = "...K" + g[12][4:]
+    return g
+
+def lamp(c): return f"......K{c}{c}K......"
+IDLE_TOP = ("................", ".......KKgK.....")        # antenne hangt slap (slapen)
+LIT_TOP = (lamp("O"), ".......KK.......")
 Z = [(14, 0), (15, 0), (16, 0), (17, 0), (16, 1), (15, 2), (14, 3), (15, 3), (16, 3), (17, 3)]   # z op 18x18 canvas
+SPARKS = [(6, 1), (11, 1), (8, 0), (9, 0)]                                                      # lampje straalt (werken)
 
 F = {
- "tikk-slaap":  (tikk("g", "K", "c", "g"), Z),
- "tikk-werk-a": (tikk("O", "C", "C", "O"), []),
- "tikk-werk-b": (tikk("g", "C", "C", "O"), []),
- "moola": ([
-"..KK........KK..", "..KpK......KpK..", "..KppKKKKKKppK..", ".KppppppppppppK.", ".KpppWpppWpppK..".replace(".KpppWpppWpppK..", ".KpppWppppWpppK."),
-".KpppKppppKpppK.", ".KpppPPPPPPpppK.", ".KpppPKPPKPpppK.", ".KpppPPPPPPpppK.", "..KKpppppppppKK.".replace("..KKpppppppppKK.", "..KKppppppppKK.."),
-"..KppppppppppK..", "..KpppYYYYpppK..", "..KpppYYYYpppK..", "..KppppppppppK..", "...KppK..KppK...", "..KKKKK..KKKKK.."], []),
- "brix": ([
-"......KKKK......", "....KKYYYYKK....", "...KYYYYYYYYK...", "...KYYYKKYYYK...", "..KKKKKKKKKKKK..",
-"...KSSSSSSSSK...", "...KSSKSSKSSK...", "...KSPSSSSPSK...", "....KSSKKSSK....", "...KWWWWWWWWK...",
-"..KKBWWWWWWBKK..", ".KSKBBBBBBBBKSK.", ".KKKBBBYYBBBKKK.", "...KBBBBBBBBK...", "...KBBK..KBBK...", "..KKKKK..KKKKK.."], []),
+ "tikk-slaap":  (robot("G", *IDLE_TOP, "C", c11="WggW", eyes_open=False), Z),
+ "tikk-werk-a": (raise_left(robot("G", *LIT_TOP, "C", c11="WOOW")), SPARKS),
+ "moola": (robot("N", "......KYYK......", ".....KKKKKK.....", "Y", c11="WYYW"), []),
+ "brix":  (robot("B", "...KKKK..KKKK...", "...KYYK..KYYK...", "O", c11="YWWY"), []),
 }
 for n, (g, _) in F.items():
     assert len(g) == 16 and all(len(r) == 16 for r in g), (n, [(i, len(r)) for i, r in enumerate(g) if len(r) != 16])
@@ -61,6 +67,8 @@ def svg(cv, mono=False):
             + (' fill="#000"' if mono else '') + '>\n' + "\n".join(rects) + "\n</svg>\n")
 
 CV = {n: canvas(g, ex) for n, (g, ex) in F.items()}
+CV["tikk-werk-b"] = [r[::-1] for r in CV["tikk-werk-a"]]
+CV = {k: CV[k] for k in ("tikk-slaap", "tikk-werk-a", "tikk-werk-b", "moola", "brix")}
 for n, cv in CV.items():
     (OUT / f"{n}.svg").write_text(svg(cv)); (OUT / f"{n}-mono.svg").write_text(svg(cv, True))
     png(cv, 1, True).save(OUT / f"{n}-mono.png"); png(cv, 2, True).save(OUT / f"{n}-mono@2x.png")

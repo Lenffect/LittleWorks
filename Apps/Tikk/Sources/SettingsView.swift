@@ -5,6 +5,7 @@ struct SettingsView: View {
     let model: AppModel
     @AppStorage(SettingsKey.showUrencriterium) private var show = true
     @AppStorage(SettingsKey.urencriteriumTarget) private var target = SettingsKey.defaultTarget
+    @AppStorage(SettingsKey.askNoteOnStop) private var askNote = true
     @AppStorage(SettingsKey.autoBackupEnabled) private var autoBackup = true
     @AppStorage(SettingsKey.autoBackupPath) private var backupPath = SettingsKey.defaultBackupPath
 
@@ -56,6 +57,7 @@ struct SettingsView: View {
             }
 
             Section("Algemeen") {
+                Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
                 Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
             }
         }
