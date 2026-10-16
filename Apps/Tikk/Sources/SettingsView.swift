@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import LittleWorksCore
 
 struct SettingsView: View {
     let model: AppModel
