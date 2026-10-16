@@ -8,7 +8,7 @@ from make_alternatieven import new, rect, rrect, eyes, VARIANTS
 
 OUT = Path(__file__).parent / "Assets" / "Menubalk-hoofd"; OUT.mkdir(parents=True, exist_ok=True)
 RAYS = [(6, 1), (13, 1), (5, 0), (14, 0)]
-Z = [(16, 0), (17, 0), (18, 0), (19, 0), (18, 1), (16, 2), (17, 2), (18, 2), (19, 2)]
+Z = [(x, 0) for x in range(14, 19)] + [(17, 1), (16, 2), (15, 3)] + [(x, 4) for x in range(14, 19)]   # z van 5x5
 
 def head(lit, eye, idle, rays):
     cv = new()
@@ -20,8 +20,7 @@ def head(lit, eye, idle, rays):
     else: rect(cv, 8, 16, 4, 1, "W"); cv[15][7] = cv[15][12] = "W"                                          # glimlach
     if rays and lit and not idle:
         for x, y in RAYS: cv[y][x] = "s"
-    if idle:
-        for x, y in Z: cv[y][x] = "z"
+    # slapen = alleen ogen dicht, geen z
     return ["".join(r) for r in cv]
 
 SEQ = [("tracking-1", True, "open", False), ("tracking-2", False, "open", False), ("tracking-3", True, "open", False),

@@ -86,7 +86,7 @@ struct MenuView: View {
 
     private var justStopped: Bool {
         guard let t = model.lastStopped else { return false }
-        return model.now.timeIntervalSince(t) < 4
+        return model.now.timeIntervalSince(t) < 5
     }
 
     @ViewBuilder private var header: some View {
@@ -122,6 +122,11 @@ struct MenuView: View {
 
     private func row(_ title: String, _ seconds: TimeInterval) -> some View {
         HStack { Text(title); Spacer(); Text(Format.short(seconds)).monospacedDigit() }
+    }
+
+    private func releaseFocus() {
+        newClientFocused = false
+        NSApp.keyWindow?.makeFirstResponder(nil)
     }
 
     private func add() {

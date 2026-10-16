@@ -15,6 +15,16 @@ final class PopoverPosition {
                 MainActor.assumeIsolated { Self.align(w) }
             })
         }
+        // The popover window keeps its first responder between openings, which left the
+        // "Nieuwe klant" field active. Start every opening without a focused field.
+        observers.append(NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
+        ) { note in
+            guard let w = note.object as? NSWindow, Self.isPopover(w) else { return }
+            MainActor.assumeIsolated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak w] in w?.makeFirstResponder(nil) }
+            }
+        })
     }
 
     private static func isPopover(_ w: NSWindow) -> Bool {
