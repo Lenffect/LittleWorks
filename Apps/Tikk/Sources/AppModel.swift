@@ -21,6 +21,7 @@ final class AppModel {
     private(set) var active: TimeEntry?
     private(set) var now = Date()
     private(set) var todayByClient: [UUID: TimeInterval] = [:]
+    private(set) var yearTotal: TimeInterval = 0
     private(set) var weekByClient: [UUID: TimeInterval] = [:]
     var errorMessage: String?
     var statusMessage: String?
@@ -154,6 +155,9 @@ final class AppModel {
         }
         todayByClient = totals(DateInterval(start: dayStart, end: dayEnd))
         weekByClient = totals(week)
+        if let year = cal.dateInterval(of: .year, for: now) {
+            yearTotal = totals(year).values.reduce(0, +)
+        }
     }
 
     private func tick() {

@@ -36,6 +36,7 @@ struct MenuView: View {
             Divider()
             row("Vandaag", model.todayTotal)
             row("Deze week", model.weekTotal)
+            UrencriteriumBar(yearSeconds: model.yearTotal)
             Divider()
 
             TextField("Nieuwe klant", text: $newClient)
@@ -47,6 +48,10 @@ struct MenuView: View {
             Divider()
             Button("Overzicht openen") {
                 openWindow(id: "overview")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            Button("Instellingen…") {
+                openWindow(id: "settings")
                 NSApp.activate(ignoringOtherApps: true)
             }
             Button("Back-up maken…") { model.exportBackup() }

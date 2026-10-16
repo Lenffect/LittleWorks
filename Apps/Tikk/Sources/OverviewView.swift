@@ -30,6 +30,18 @@ struct OverviewView: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            UrencriteriumBar(yearSeconds: model.yearTotal).padding([.horizontal, .top], 16)
+            content
+        }
+        .frame(minWidth: 520, minHeight: 360)
+        .sheet(item: $editing) { entry in
+            EntryEditor(model: model, entry: entry) { editing = nil; days = model.overviewDays() }
+        }
+        .task(id: refreshKey) { days = model.overviewDays() }
+    }
+
+    @ViewBuilder private var content: some View {
         Group {
             if days.isEmpty {
                 Text("Nog geen registraties.").foregroundStyle(.secondary)
@@ -65,10 +77,5 @@ struct OverviewView: View {
                 }
             }
         }
-        .frame(minWidth: 520, minHeight: 360)
-        .sheet(item: $editing) { entry in
-            EntryEditor(model: model, entry: entry) { editing = nil; days = model.overviewDays() }
-        }
-        .task(id: refreshKey) { days = model.overviewDays() }
     }
 }
