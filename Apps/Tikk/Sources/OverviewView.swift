@@ -3,7 +3,9 @@ import LittleWorksCore
 
 struct DayRow: Identifiable {
     let id = UUID()
+    let entryId: UUID
     let clientName: String
+    let note: String?
     let start: Date
     let end: Date
     let isRunning: Bool
@@ -20,6 +22,7 @@ struct DayGroup: Identifiable {
 struct OverviewView: View {
     let model: AppModel
     @State private var days: [DayGroup] = []
+    @State private var editing: TimeEntry?
 
     /// Changes every minute and whenever the timer or clients change, to refresh the list.
     private var refreshKey: String {
@@ -37,13 +40,18 @@ struct OverviewView: View {
                         Section {
                             ForEach(group.rows) { row in
                                 HStack {
-                                    Text(row.clientName).font(.body)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(row.clientName).font(.body)
+                                        if let n = row.note { Text(n).font(.caption).foregroundStyle(.secondary) }
+                                    }
                                     if row.isRunning { Text("● loopt").foregroundStyle(.orange).font(.caption) }
                                     Spacer()
                                     Text("\(row.start.formatted(date: .omitted, time: .shortened)) – \(row.isRunning ? "nu" : row.end.formatted(date: .omitted, time: .shortened))")
                                         .foregroundStyle(.secondary)
                                     Text(Format.short(row.duration)).monospacedDigit().frame(width: 56, alignment: .trailing)
                                 }
+                                .contentShape(Rectangle())
+                                .onTapGesture { editing = model.entry(id: row.entryId) }
                             }
                         } header: {
                             HStack {
@@ -58,6 +66,9 @@ struct OverviewView: View {
             }
         }
         .frame(minWidth: 520, minHeight: 360)
+        .sheet(item: $editing) { entry in
+            EntryEditor(model: model, entry: entry) { editing = nil; days = model.overviewDays() }
+        }
         .task(id: refreshKey) { days = model.overviewDays() }
     }
 }

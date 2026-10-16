@@ -94,7 +94,7 @@ final class AppModel {
         for entry in entries {
             for seg in Totals.segments(of: entry, now: now, calendar: cal) {
                 byDay[seg.day, default: []].append(DayRow(
-                    clientName: names[entry.clientId] ?? "Onbekend",
+                    entryId: entry.id, clientName: names[entry.clientId] ?? "Onbekend", note: entry.note,
                     start: seg.start, end: seg.end, isRunning: entry.isActive && seg.end == now))
             }
         }
@@ -102,6 +102,28 @@ final class AppModel {
             DayGroup(day: day, rows: byDay[day]!.sorted { $0.start > $1.start })
         }
     }
+
+    /// Clients to choose from when editing an entry (archived ones included).
+    var allClients: [Client] {
+        ((try? context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.value)
+    }
+
+    func entry(id: UUID) -> TimeEntry? {
+        (try? context.fetch(FetchDescriptor<EntryRecord>(predicate: #Predicate { $0.id == id })))?.first?.value
+    }
+
+    /// Returns false (and sets errorMessage) when the edit is invalid.
+    @discardableResult
+    func updateEntry(_ entry: TimeEntry) -> Bool {
+        do { try engine.update(entry) } catch TimerError.endBeforeStart {
+            errorMessage = "Het eind ligt vóór de start."
+            return false
+        } catch { errorMessage = error.localizedDescription; return false }
+        reload()
+        return true
+    }
+
+    func deleteEntry(id: UUID) { perform { try store.deleteEntry(id: id) } }
 
     func exportBackup() {
         do {
