@@ -24,11 +24,17 @@ struct TikkApp: App {
 /// Menu-bar item: Tikk (template image, animated while tracking) plus client and running time.
 struct MenuBarLabel: View {
     let model: AppModel
+    @AppStorage(SettingsKey.menuBarStyle) private var styleRaw = MenuBarStyle.both.rawValue
 
     var body: some View {
+        let style = MenuBarStyle(rawValue: styleRaw) ?? .both
+        let client = model.activeClient
         HStack(spacing: 4) {
-            Image(model.menuIcon.name)
-            if let client = model.activeClient {
+            // With "only time" and no timer running there would be nothing to click, so show the icon.
+            if style != .timeOnly || client == nil {
+                Image(model.menuIcon.name)
+            }
+            if let client, style != .iconOnly {
                 Text("\(client.name) \(Format.duration(model.activeElapsed))").monospacedDigit()
             }
         }

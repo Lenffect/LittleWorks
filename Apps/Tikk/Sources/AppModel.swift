@@ -379,6 +379,7 @@ final class AppModel {
     }
 
     private func tick() {
+        MenuBarFont.apply()
         now = Date()
         menuIcon.sync(tracking: active != nil)
         checkReminder()
