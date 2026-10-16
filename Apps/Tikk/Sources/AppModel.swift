@@ -153,6 +153,27 @@ final class AppModel {
         return true
     }
 
+    /// Renames a client. Returns false (and sets errorMessage) when the name is empty or used by another client.
+    @discardableResult
+    func renameClient(_ client: Client, to name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        if trimmed == client.name { return true }
+        if let other = allClients.first(where: {
+            $0.id != client.id && $0.name.compare(trimmed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }) {
+            errorMessage = other.isArchived
+                ? tr("\"%@\" bestaat al als gearchiveerde klant. Herstel die onder Klanten.", other.name)
+                : tr("Er is al een klant met de naam \"%@\".", other.name)
+            return false
+        }
+        guard let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == client.id })).first else { return false }
+        errorMessage = nil
+        r.name = trimmed
+        perform {}
+        return true
+    }
+
     func archive(_ client: Client) {
         if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == client.id })).first {
             if active?.clientId == client.id { stop() }

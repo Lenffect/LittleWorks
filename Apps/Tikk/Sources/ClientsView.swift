@@ -1,7 +1,55 @@
 import SwiftUI
 import LittleWorksCore
 
-/// Client management: add, hourly rate, archive, restore, delete.
+/// Client name shown as plain text; the pencil icon switches to an editable field.
+/// Return or the checkmark saves, Escape cancels. A rejected name reverts.
+private struct ClientNameField: View {
+    let model: AppModel
+    let client: Client
+    @State private var editing = false
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if editing {
+                TextField("Naam", text: $text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 200)
+                    .focused($focused)
+                    .onSubmit(commit)
+                    .onExitCommand(perform: cancel)
+                Button(action: commit) { Image(systemName: "checkmark") }
+                    .buttonStyle(.borderless)
+                    .help(tr("Opslaan"))
+            } else {
+                Text(client.name)
+                Button(action: edit) { Image(systemName: "pencil") }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help(tr("Naam wijzigen"))
+            }
+        }
+    }
+
+    private func edit() {
+        text = client.name
+        model.errorMessage = nil
+        editing = true
+        focused = true
+    }
+
+    private func commit() {
+        if model.renameClient(client, to: text) { editing = false }
+    }
+
+    private func cancel() {
+        model.errorMessage = nil
+        editing = false
+    }
+}
+
+/// Client management: add, rename, hourly rate, archive, restore, delete.
 struct ClientsView: View {
     let model: AppModel
     @State private var newClient = ""
@@ -41,7 +89,7 @@ struct ClientsView: View {
                 ForEach(active) { client in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text(client.name)
+                            ClientNameField(model: model, client: client)
                             Spacer()
                             RateField(client: client) { model.setRate($0, for: client.id) }
                             FeeField(client: client) { model.setMonthlyFee($0, for: client.id) }
@@ -61,7 +109,7 @@ struct ClientsView: View {
                 if archived.isEmpty { Text("Geen gearchiveerde klanten.").foregroundStyle(.secondary) }
                 ForEach(archived) { client in
                     HStack {
-                        Text(client.name)
+                        ClientNameField(model: model, client: client)
                         Spacer()
                         Button("Herstel") { model.unarchive(client) }
                         Button("Verwijder…", role: .destructive) { deleting = client }
