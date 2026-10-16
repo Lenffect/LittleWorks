@@ -12,6 +12,7 @@ final class AppModel {
     /// Minutes away before we ask what to do with the time.
     static let awayThreshold: TimeInterval = 5 * 60
     private static let lastSeenKey = "lastSeenAt"
+    private static let clientOrderKey = "clientOrder"
 
     let container: ModelContainer
     private let context: ModelContext
@@ -172,6 +173,15 @@ final class AppModel {
         r.name = trimmed
         perform {}
         return true
+    }
+
+    /// Moves `id` to the position of `target` in the menu and remembers the order.
+    func moveClient(_ id: UUID, to target: UUID) {
+        var ids = clients.map(\.id)
+        guard id != target, let from = ids.firstIndex(of: id), let to = ids.firstIndex(of: target) else { return }
+        ids.insert(ids.remove(at: from), at: to)
+        UserDefaults.standard.set(ids.map(\.uuidString), forKey: Self.clientOrderKey)
+        reload()
     }
 
     func archive(_ client: Client) {
@@ -511,8 +521,19 @@ final class AppModel {
         dataVersion += 1
         now = Date()
         let cal = Calendar.current
+        let order = (UserDefaults.standard.stringArray(forKey: Self.clientOrderKey) ?? []).compactMap(UUID.init(uuidString:))
+        let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        // Manually ordered clients first (in saved order); new ones follow by creation date.
         clients = ((try? context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [])
             .filter { !$0.isArchived }.map(\.value)
+            .enumerated().sorted { a, b in
+                switch (rank[a.element.id], rank[b.element.id]) {
+                case let (x?, y?): return x < y
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return a.offset < b.offset
+                }
+            }.map(\.element)
         active = try? engine.activeEntry()
         menuIcon.sync(tracking: active != nil)
 

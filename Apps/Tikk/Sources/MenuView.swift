@@ -11,6 +11,8 @@ struct MenuView: View {
     @FocusState private var newClientFocused: Bool
     @State private var newClient = ""
     @State private var expandedClient: UUID?
+    @State private var dragging: UUID?
+    @State private var dropTarget: UUID?
     @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
 
     /// Fixed size, also for the note prompt, so the popover never resizes or jumps.
@@ -66,6 +68,18 @@ struct MenuView: View {
                             }
                         }
                         .contextMenu { Button("Archiveren") { model.archive(client) } }
+                        .overlay(alignment: dropAtBottom(of: client) ? .bottom : .top) {
+                            if dropTarget == client.id, dragging != client.id {
+                                Capsule().fill(Brand.green).frame(height: 3).padding(.horizontal, 8)
+                                    .offset(y: dropAtBottom(of: client) ? 5.5 : -5.5)
+                            }
+                        }
+                        .onDrag {
+                            dragging = client.id
+                            return NSItemProvider(object: client.id.uuidString as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: ClientDrop(
+                            target: client.id, model: model, dragging: $dragging, dropTarget: $dropTarget))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,6 +111,13 @@ struct MenuView: View {
             }
         }
         .padding(14)
+    }
+
+    /// Dragging downwards lands after the target row, upwards before it.
+    private func dropAtBottom(of client: Client) -> Bool {
+        guard let d = dragging, let from = model.clients.firstIndex(where: { $0.id == d }),
+              let to = model.clients.firstIndex(where: { $0.id == client.id }) else { return false }
+        return from < to
     }
 
     /// Tikk's pose follows what is happening: working, just finished, no clients yet, or asleep.
@@ -226,5 +247,24 @@ private struct ClientRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Reorders clients by drag and drop. Reports a move (not copy) so the cursor shows no green plus.
+private struct ClientDrop: DropDelegate {
+    let target: UUID
+    let model: AppModel
+    @Binding var dragging: UUID?
+    @Binding var dropTarget: UUID?
+
+    func dropEntered(info: DropInfo) { dropTarget = target }
+    func dropExited(info: DropInfo) { if dropTarget == target { dropTarget = nil } }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { dragging = nil; dropTarget = nil }
+        guard let id = dragging else { return false }
+        model.moveClient(id, to: target)
+        return true
     }
 }
