@@ -14,6 +14,19 @@ struct ClientsView: View {
         let archived = model.archivedClients
         let month = model.monthSeconds()
         List {
+            if !projectsEnabled {
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Werk je met projecten?").font(.headline)
+                            Text("Geef een klus een vaste prijs of eigen tarief, een schatting en een effectief uurtarief.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Projecten aanzetten") { projectsEnabled = true }
+                    }
+                }
+            }
             Section {
                 HStack {
                     TextField("Nieuwe klant", text: $newClient).onSubmit(add)

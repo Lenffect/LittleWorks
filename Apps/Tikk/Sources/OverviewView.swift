@@ -25,6 +25,7 @@ struct OverviewView: View {
     let onEdit: (UUID) -> Void
     @State private var days: [DayGroup] = []
     @State private var projectRows: [ProjectStatus] = []
+    @AppStorage(SettingsKey.animations) private var animations = true
     @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
 
     /// Changes every minute and whenever the timer or clients change, to refresh the list.
@@ -71,7 +72,7 @@ struct OverviewView: View {
                                         .foregroundStyle(.secondary)
                                     Text(Format.short(row.duration)).monospacedDigit().frame(width: 56, alignment: .trailing)
                                 }
-                                .contentShape(Rectangle())
+                                .modifier(HoverRow(animated: animations))
                                 .onTapGesture { onEdit(row.entryId) }
                             }
                         } header: {
@@ -143,5 +144,25 @@ private struct ProjectStatusBlock: View {
             if let revenue = row.stats.revenue, revenue > 0 { parts.append(tr("omzet €%@", money(revenue))) }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// Highlights a clickable row on hover and shows the pointing hand, like the rows in the menu.
+private struct HoverRow: ViewModifier {
+    let animated: Bool
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(hovering ? 0.08 : 0)))
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hovering = inside
+                if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+            .animation(animated ? .easeOut(duration: 0.12) : nil, value: hovering)
+            .onDisappear { if hovering { NSCursor.pop(); hovering = false } }
     }
 }

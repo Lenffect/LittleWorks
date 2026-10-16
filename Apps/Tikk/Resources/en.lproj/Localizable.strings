@@ -187,3 +187,10 @@
 "Reset" = "Reset";
 "Zet de hele app terug naar het begin: alle gegevens en instellingen worden gewist." = "Return the whole app to the start: all data and settings are erased.";
 "Reset app naar fabrieksinstellingen…" = "Reset app to factory settings…";
+
+"Werk je met projecten?" = "Working with projects?";
+"Geef een klus een vaste prijs of eigen tarief, een schatting en een effectief uurtarief." = "Give a job a fixed price or its own rate, an estimate and an effective hourly rate.";
+"Projecten aanzetten" = "Turn on projects";
+"Naam van het project" = "Project name";
+"Project toevoegen" = "Add project";
+"Nog geen projecten bij deze klant." = "No projects for this client yet.";

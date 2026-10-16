@@ -10,6 +10,8 @@ struct ClientProjects: View {
     let model: AppModel
     let client: Client
     @State private var newName = ""
+    @State private var adding = false
+    @FocusState private var nameFocused: Bool
     @State private var deleting: Project?
 
     var body: some View {
@@ -21,18 +23,31 @@ struct ClientProjects: View {
 
         VStack(alignment: .leading, spacing: 6) {
             Text("Projecten").font(.subheadline.weight(.semibold)).padding(.top, 4)
-            if active.isEmpty { Text("Nog geen projecten.").font(.caption).foregroundStyle(.secondary) }
+            if active.isEmpty && !adding { Text("Nog geen projecten bij deze klant.").font(.caption).foregroundStyle(.secondary) }
             ForEach(active) { project in
                 ProjectRow(project: project, clientRate: client.hourlyRate, seconds: seconds[project.id] ?? 0,
                            onChange: model.updateProject) {
                     var p = project; p.isArchived = true; model.updateProject(p)
                 }
             }
-            HStack {
-                TextField("Nieuw project", text: $newName).onSubmit(add)
-                    .onChange(of: newName) { model.errorMessage = nil }
-                Button("Voeg toe", action: add)
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+            if adding {
+                HStack {
+                    TextField("Naam van het project", text: $newName)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($nameFocused)
+                        .onSubmit(add)
+                        .onChange(of: newName) { model.errorMessage = nil }
+                    Button("Voeg toe", action: add)
+                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Annuleer") { adding = false; newName = ""; model.errorMessage = nil }
+                }
+            } else {
+                Button { adding = true; nameFocused = true } label: {
+                    Label("Project toevoegen", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(Color.accentColor)
+                .padding(.top, 2)
             }
             if !archived.isEmpty {
                 Text("Gearchiveerde projecten").font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.top, 4)
@@ -56,7 +71,7 @@ struct ClientProjects: View {
     }
 
     private func add() {
-        if model.addProject(clientId: client.id, name: newName) { newName = "" }
+        if model.addProject(clientId: client.id, name: newName) { newName = ""; adding = false }
     }
 }
 
