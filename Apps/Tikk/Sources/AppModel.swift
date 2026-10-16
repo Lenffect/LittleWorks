@@ -194,17 +194,40 @@ final class AppModel {
         }
     }
 
-    /// Hours per client in `interval` (archived clients included), optionally for one client.
-    func report(in interval: DateInterval, clientId: UUID? = nil) -> [ReportRow] {
+    /// Hours per client in `interval` (archived clients included). Empty `clientIds` means all clients.
+    func report(in interval: DateInterval, clientIds: Set<UUID> = []) -> [ReportRow] {
         let entries = (try? store.entries(in: interval)) ?? []
         let seconds = Totals.secondsPerClient(entries: entries, in: interval, now: Date())
         return allClients
-            .filter { clientId == nil || $0.id == clientId }
+            .filter { clientIds.isEmpty || clientIds.contains($0.id) }
             .compactMap { c in
                 guard let s = seconds[c.id], s > 0 else { return nil }
                 return ReportRow(client: c, seconds: s)
             }
             .sorted { $0.seconds > $1.seconds }
+    }
+
+    /// Every registration in the period, clipped at the period edges, for the Excel export.
+    func exportEntries(in interval: DateInterval, clientIds: Set<UUID> = []) -> [ExportEntry] {
+        let now = Date()
+        let clients = Dictionary(uniqueKeysWithValues: allClients.map { ($0.id, $0) })
+        return ((try? store.entries(in: interval)) ?? []).compactMap { e in
+            guard let client = clients[e.clientId], clientIds.isEmpty || clientIds.contains(e.clientId) else { return nil }
+            let start = max(e.startTime, interval.start)
+            let end = min(e.endTime ?? now, interval.end)
+            guard end > start else { return nil }
+            return ExportEntry(client: client, start: start, end: end, isRunning: e.isActive, note: e.note)
+        }
+    }
+
+    func exportReport(interval: DateInterval, clientIds: Set<UUID>, includeIncome: Bool) {
+        do {
+            let url = try ReportExport.save(
+                entries: exportEntries(in: interval, clientIds: clientIds),
+                summary: report(in: interval, clientIds: clientIds),
+                interval: interval, includeIncome: includeIncome)
+            if let url { statusMessage = "Rapport opgeslagen: \(url.lastPathComponent)" }
+        } catch { errorMessage = "Export mislukt: \(error.localizedDescription)" }
     }
 
     private func perform(_ work: () throws -> Void) {

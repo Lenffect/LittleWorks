@@ -14,7 +14,7 @@ struct ReportView: View {
     @State private var preset: Preset = .thisMonth
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
     @State private var customEnd = Date()
-    @State private var clientFilter: UUID?
+    @State private var selectedClients: Set<UUID> = []
     @State private var rows: [ReportRow] = []
     @AppStorage(SettingsKey.reportShowIncome) private var showIncome = false
 
@@ -39,7 +39,7 @@ struct ReportView: View {
     }
 
     private var refreshKey: String {
-        "\(Int(Date().timeIntervalSince1970 / 60))-\(preset)-\(customStart)-\(customEnd)-\(clientFilter?.uuidString ?? "all")-\(model.dataVersion)"
+        "\(Int(Date().timeIntervalSince1970 / 60))-\(preset)-\(customStart)-\(customEnd)-\(selectedClients.map(\.uuidString).sorted())-\(model.dataVersion)"
     }
 
     private var totalSeconds: TimeInterval { rows.reduce(0) { $0 + $1.seconds } }
@@ -51,10 +51,7 @@ struct ReportView: View {
                 Picker("Periode", selection: $preset) {
                     ForEach(Preset.allCases) { Text($0.rawValue).tag($0) }
                 }
-                Picker("Klant", selection: $clientFilter) {
-                    Text("Alle klanten").tag(UUID?.none)
-                    ForEach(model.allClients) { Text($0.name).tag(UUID?.some($0.id)) }
-                }
+                clientMenu
             }
             if preset == .custom {
                 HStack {
@@ -100,12 +97,38 @@ struct ReportView: View {
                         .monospacedDigit().font(.headline).frame(width: 90, alignment: .trailing)
                 }
             }
-            if showIncome {
-                Text("Indicatie: uren × uurloon, zonder btw of kosten.").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                if showIncome {
+                    Text("Indicatie: uren × uurloon, zonder btw of kosten.").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Exporteer naar Excel…") {
+                    model.exportReport(interval: interval, clientIds: selectedClients, includeIncome: showIncome)
+                }
+                .disabled(rows.isEmpty)
             }
+            if let m = model.statusMessage { Text(m).font(.caption).foregroundStyle(.secondary) }
         }
         .padding([.horizontal, .bottom], 14)
-        .task(id: refreshKey) { rows = model.report(in: interval, clientId: clientFilter) }
+        .task(id: refreshKey) { rows = model.report(in: interval, clientIds: selectedClients) }
+    }
+
+    private var clientMenu: some View {
+        Menu {
+            Button("Alle klanten") { selectedClients = [] }
+            Divider()
+            ForEach(model.allClients) { client in
+                Toggle(client.name, isOn: Binding(
+                    get: { selectedClients.contains(client.id) },
+                    set: { on in if on { selectedClients.insert(client.id) } else { selectedClients.remove(client.id) } }))
+            }
+        } label: {
+            switch selectedClients.count {
+            case 0: Text("Alle klanten")
+            case 1: Text(model.allClients.first { selectedClients.contains($0.id) }?.name ?? "1 klant")
+            default: Text("\(selectedClients.count) klanten")
+            }
+        }
     }
 
     private var periodLabel: String {
