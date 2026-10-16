@@ -110,6 +110,7 @@ struct ReportView: View {
             if let m = model.statusMessage { Text(m).font(.caption).foregroundStyle(.secondary) }
         }
         .padding([.horizontal, .bottom], 14)
+        .padding(.top, 16)
         .task(id: refreshKey) { rows = model.report(in: interval, clientIds: selectedClients) }
     }
 

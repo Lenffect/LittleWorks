@@ -72,6 +72,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .padding(.top, 12)
     }
 
     private func setPath(_ path: String) {
