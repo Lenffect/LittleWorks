@@ -6,8 +6,10 @@ struct SettingsView: View {
     let model: AppModel
     @AppStorage(SettingsKey.showUrencriterium) private var show = true
     @AppStorage(SettingsKey.urencriteriumTarget) private var target = SettingsKey.defaultTarget
+    @AppStorage(SettingsKey.animations) private var animations = true
     @AppStorage(SettingsKey.showMenuSummary) private var showMenuSummary = true
     @AppStorage(SettingsKey.askNoteOnStop) private var askNote = true
+    @AppStorage(SettingsKey.menuAnimation) private var menuAnimation = true
     @AppStorage(SettingsKey.autoBackupEnabled) private var autoBackup = true
     @AppStorage(SettingsKey.autoBackupPath) private var backupPath = SettingsKey.defaultBackupPath
 
@@ -68,8 +70,24 @@ struct SettingsView: View {
 
             Section("Algemeen") {
                 Toggle("Toon totalen en urencriterium in het menu", isOn: $showMenuSummary)
+                Toggle("Animaties (hover en tikkende klok)", isOn: $animations)
                 Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
                 Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
+                Toggle("Animatie in de menubalk terwijl de timer loopt", isOn: $menuAnimation)
+                if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                    Text("Verminder beweging staat aan in macOS, dus Tikk blijft stil.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
+                HStack(spacing: 12) {
+                    TikkFigure(pose: .master, scale: 3)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Wordmark(scale: 1.5)
+                        Text("Your tiny timekeeper. Versie \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?")")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
         }
         .formStyle(.grouped)

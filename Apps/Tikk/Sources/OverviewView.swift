@@ -40,8 +40,12 @@ struct OverviewView: View {
     @ViewBuilder private var content: some View {
         Group {
             if days.isEmpty {
-                Text("Nog geen registraties.").foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 10) {
+                    TikkFigure(pose: .leeg, scale: 4)
+                    Text("Nog geen registraties.").font(.title3.weight(.semibold))
+                    Text("Start een timer vanuit de menubalk, dan verschijnt hij hier.").foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
                     ForEach(days) { group in

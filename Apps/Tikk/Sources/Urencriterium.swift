@@ -7,9 +7,12 @@ enum SettingsKey {
     static let autoBackupEnabled = "autoBackupEnabled"
     static let autoBackupPath = "autoBackupPath"
     static let defaultBackupPath = NSHomeDirectory() + "/Desktop/LittleWorks/Backups"
+    static let animations = "animationsEnabled"
     static let showMenuSummary = "showMenuSummary"
     static let askNoteOnStop = "askNoteOnStop"
     static let reportShowIncome = "reportShowIncome"
+    static let menuAnimation = "menuAnimation"
+    static let onboardingDone = "onboardingDone"
 }
 
 /// Progress of hours worked this calendar year towards the urencriterium.

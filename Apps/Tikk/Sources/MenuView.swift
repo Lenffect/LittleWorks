@@ -6,6 +6,9 @@ struct MenuView: View {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
     @AppStorage(SettingsKey.showMenuSummary) private var showSummary = true
+    @AppStorage(SettingsKey.onboardingDone) private var onboardingDone = false
+    @AppStorage(SettingsKey.animations) private var animations = true
+    @FocusState private var newClientFocused: Bool
     @State private var newClient = ""
 
     /// Fixed size, also for the note prompt, so the popover never resizes or jumps.
@@ -13,38 +16,33 @@ struct MenuView: View {
 
     var body: some View {
         Group {
-            if let id = model.notePromptEntryId, let entry = model.entry(id: id) {
+            if !onboardingDone {
+                OnboardingView()
+            } else if let id = model.notePromptEntryId, let entry = model.entry(id: id) {
                 NotePrompt(model: model, entry: entry)
             } else {
                 main
             }
         }
+        .fontDesign(.rounded)
         .frame(width: Self.size.width, height: Self.size.height, alignment: .top)
+        .background(Brand.background)
     }
 
     private var main: some View {
         VStack(alignment: .leading, spacing: 10) {
-            timer
+            header
             Divider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    if model.clients.isEmpty {
-                        Text("Nog geen klanten.\nVoeg er hieronder één toe.").foregroundStyle(.secondary)
-                    }
                     ForEach(model.clients) { client in
-                        Button { model.toggle(client) } label: {
-                            HStack {
-                                Image(systemName: model.active?.clientId == client.id ? "stop.circle.fill" : "play.circle")
-                                    .font(.title2)
-                                Text(client.name).font(.title3).lineLimit(1)
-                                Spacer()
-                                Text(Format.short(model.todayByClient[client.id] ?? 0))
-                                    .monospacedDigit().foregroundStyle(.secondary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                        ClientRow(
+                            client: client,
+                            isRunning: model.active?.clientId == client.id,
+                            today: model.todayByClient[client.id] ?? 0,
+                            animated: animations
+                        ) { model.toggle(client) }
                         .contextMenu { Button("Archiveren") { model.archive(client) } }
                     }
                 }
@@ -52,7 +50,10 @@ struct MenuView: View {
             }
 
             HStack {
-                TextField("Nieuwe klant", text: $newClient).textFieldStyle(.roundedBorder).onSubmit(add)
+                TextField("Nieuwe klant", text: $newClient)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($newClientFocused)
+                    .onSubmit(add)
                 .onChange(of: newClient) { model.errorMessage = nil }
                 Button("Voeg toe", action: add)
                     .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -76,23 +77,47 @@ struct MenuView: View {
         .padding(14)
     }
 
-    @ViewBuilder private var timer: some View {
-        if let c = model.activeClient {
-            HStack {
+    /// Tikk's pose follows what is happening: working, just finished, no clients yet, or asleep.
+    private var pose: TikkPose {
+        if model.active != nil { return .master }
+        if justStopped { return .klaar }
+        return model.clients.isEmpty ? .leeg : .slaap
+    }
+
+    private var justStopped: Bool {
+        guard let t = model.lastStopped else { return false }
+        return model.now.timeIntervalSince(t) < 4
+    }
+
+    @ViewBuilder private var header: some View {
+        HStack(spacing: 12) {
+            TikkFigure(pose: pose, scale: 3)
+            if let c = model.activeClient {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.name).font(.headline)
-                    Text(Format.duration(model.activeElapsed)).monospacedDigit().font(.title2)
+                    Text(c.name).font(.headline).lineLimit(1)
+                    Text(Format.duration(model.activeElapsed)).monospacedDigit().font(.title2.weight(.semibold))
                 }
                 Spacer()
                 Button { model.stop() } label: {
-                    Text("Stop").font(.title3.weight(.semibold)).frame(width: 70).frame(minHeight: 32)
+                    Text("Stop").font(.title3.weight(.semibold)).frame(width: 56).frame(minHeight: 28)
                 }
+                .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.escape, modifiers: [])
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Wordmark(scale: 1.5)
+                    Text(idleText).font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
             }
-        } else {
-            Text("Geen timer actief").foregroundStyle(.secondary).frame(minHeight: 32)
         }
+        .frame(height: 60)
+    }
+
+    private var idleText: String {
+        if justStopped { return "Klaar! Mooi werk." }
+        return model.clients.isEmpty ? "Voeg je eerste klant toe." : "Geen timer actief."
     }
 
     private func row(_ title: String, _ seconds: TimeInterval) -> some View {
@@ -101,5 +126,36 @@ struct MenuView: View {
 
     private func add() {
         if model.addClient(name: newClient) { newClient = "" }
+    }
+}
+
+/// One client row: the whole row is clickable, and highlights on hover to show that.
+private struct ClientRow: View {
+    let client: Client
+    let isRunning: Bool
+    let today: TimeInterval
+    let animated: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: isRunning ? "stop.circle.fill" : "play.circle").font(.title2)
+                Text(client.name).font(.title3).lineLimit(1)
+                Spacer()
+                Text(Format.short(today)).monospacedDigit().foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(hovering ? 0.10 : (isRunning ? 0.06 : 0)))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(animated ? .easeOut(duration: 0.12) : nil, value: hovering)
     }
 }

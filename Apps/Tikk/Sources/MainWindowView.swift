@@ -28,6 +28,14 @@ struct MainWindowView: View {
                 Label(p.rawValue, systemImage: p.icon).tag(p)
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 8) {
+                    TikkFigure(pose: model.active == nil ? .slaap : .master, scale: 2)
+                    Wordmark(scale: 1)
+                    Spacer()
+                }
+                .padding(12)
+            }
         } detail: {
             switch page ?? .overview {
             case .overview: OverviewView(model: model) { editing = EditTarget(id: $0) }

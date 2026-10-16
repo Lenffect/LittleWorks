@@ -10,11 +10,7 @@ struct TikkApp: App {
         MenuBarExtra {
             MenuView(model: model)
         } label: {
-            if let client = model.activeClient {
-                Text("● \(client.name) \(Format.duration(model.activeElapsed))")
-            } else {
-                Text("tikk.")
-            }
+            MenuBarLabel(model: model)
         }
         .menuBarExtraStyle(.window)
 
@@ -22,5 +18,19 @@ struct TikkApp: App {
             MainWindowView(model: model)
         }
         .defaultSize(width: 920, height: 620)
+    }
+}
+
+/// Menu-bar item: Tikk (template image, animated while tracking) plus client and running time.
+struct MenuBarLabel: View {
+    let model: AppModel
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(model.menuIcon.name)
+            if let client = model.activeClient {
+                Text("\(client.name) \(Format.duration(model.activeElapsed))").monospacedDigit()
+            }
+        }
     }
 }

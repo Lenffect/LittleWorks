@@ -1,0 +1,23 @@
+{
+  "tracking": {
+    "frames": [
+      "tracking-1",
+      "tracking-2",
+      "tracking-3",
+      "tracking-4",
+      "tracking-5"
+    ],
+    "durations": [
+      0.5,
+      0.5,
+      0.5,
+      0.08,
+      0.12
+    ]
+  },
+  "idle": {
+    "frames": [
+      "idle-1"
+    ]
+  }
+}

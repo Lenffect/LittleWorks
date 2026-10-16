@@ -33,6 +33,11 @@ final class AppModel {
     /// Bumped on every reload, so screens can refresh when data changed.
     private(set) var dataVersion = 0
 
+    /// Drives the menu-bar icon (idle / tracking animation).
+    let menuIcon = MenuBarIcon()
+    /// When the timer was last stopped by the user (shows Tikk's "klaar" pose for a few seconds).
+    private(set) var lastStopped: Date?
+
     private var sleepStartedAt: Date?
     private var ticker: Timer?
 
@@ -90,12 +95,14 @@ final class AppModel {
     func toggle(_ client: Client) {
         let previous = active?.id
         perform { try engine.toggle(clientId: client.id) }
+        if previous != nil, active == nil { lastStopped = Date() }
         promptForNote(ifStopped: previous)
     }
 
     func stop() {
         let previous = active?.id
         perform { try engine.stop() }
+        if previous != nil { lastStopped = Date() }
         promptForNote(ifStopped: previous)
     }
 
@@ -330,6 +337,7 @@ final class AppModel {
         clients = ((try? context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)]))) ?? [])
             .filter { !$0.isArchived }.map(\.value)
         active = try? engine.activeEntry()
+        menuIcon.sync(tracking: active != nil)
 
         let dayStart = cal.startOfDay(for: now)
         let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart)!
@@ -372,6 +380,7 @@ final class AppModel {
 
     private func tick() {
         now = Date()
+        menuIcon.sync(tracking: active != nil)
         checkReminder()
         if active != nil {
             UserDefaults.standard.set(now, forKey: Self.lastSeenKey)
@@ -410,6 +419,7 @@ final class AppModel {
         let minutes = Int(Date().timeIntervalSince(since) / 60)
         let alert = NSAlert()
         alert.messageText = "\(reason) \(Format.duration(Date().timeIntervalSince(since))) (\(minutes) min)"
+        alert.icon = NSImage.tikk(reason.contains("sliep") ? .slaap : .oeps)
         alert.informativeText = "De timer liep door. Wat doen we met die tijd?"
         alert.addButton(withTitle: "Stop op het moment van weggaan")
         alert.addButton(withTitle: "Tijd behouden")
