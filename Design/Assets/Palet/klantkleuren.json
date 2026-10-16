@@ -1,0 +1,21 @@
+{
+  "merk": {
+    "tikkOrange": "#FF8A4C",
+    "warmOffWhite": "#F8F7F4",
+    "softBlack": "#242424",
+    "mutedGray": "#969696",
+    "softGreen": "#91B89A"
+  },
+  "klanten": [
+    "#FF8A4C",
+    "#91B89A",
+    "#7FA3C7",
+    "#F2C14E",
+    "#E88FA3",
+    "#A38BC9",
+    "#5FB5B0",
+    "#E0675A",
+    "#B58A6A",
+    "#969696"
+  ]
+}

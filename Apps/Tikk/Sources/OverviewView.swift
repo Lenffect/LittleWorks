@@ -26,7 +26,7 @@ struct OverviewView: View {
 
     /// Changes every minute and whenever the timer or clients change, to refresh the list.
     private var refreshKey: String {
-        "\(Int(model.now.timeIntervalSince1970 / 60))-\(model.active?.id.uuidString ?? "-")-\(model.clients.count)"
+        "\(Int(model.now.timeIntervalSince1970 / 60))-\(model.active?.id.uuidString ?? "-")-\(model.clients.count)-\(model.dataVersion)"
     }
 
     var body: some View {

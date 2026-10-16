@@ -17,5 +17,10 @@ struct TikkApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Window(WindowTitle.main, id: "main") {
+            MainWindowView(model: model)
+        }
+        .defaultSize(width: 920, height: 620)
     }
 }
