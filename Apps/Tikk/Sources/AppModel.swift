@@ -25,6 +25,9 @@ final class AppModel {
     private(set) var weekByClient: [UUID: TimeInterval] = [:]
     var errorMessage: String?
     var statusMessage: String?
+    /// Bumped each time the main window is freshly opened, so it starts on the overview page.
+    private(set) var mainWindowOpenCount = 0
+    func mainWindowWillOpen() { mainWindowOpenCount += 1 }
     /// Result of the last automatic backup (shown in settings).
     private(set) var autoBackupStatus: String?
     /// Bumped on every reload, so screens can refresh when data changed.

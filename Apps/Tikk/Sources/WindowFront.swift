@@ -6,7 +6,11 @@ enum WindowTitle { static let main = "tikk." }
 /// Opens the main window in front of everything. The menu popover (a high-level window) is closed first.
 /// A menu-bar-only app cannot take focus, so tikk. is a regular app (Dock icon) while a window is open.
 @MainActor
-func openMainWindow(using openWindow: OpenWindowAction) {
+func openMainWindow(model: AppModel, using openWindow: OpenWindowAction) {
+    let alreadyOpen = NSApp.windows.contains {
+        $0.isVisible && $0.title != "" && $0.styleMask.contains(.titled)
+    }
+    if !alreadyOpen { model.mainWindowWillOpen() }
     for w in NSApp.windows where String(describing: type(of: w)).hasPrefix("MenuBarExtraWindow") {
         w.orderOut(nil)
     }

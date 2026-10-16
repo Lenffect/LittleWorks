@@ -36,6 +36,7 @@ struct MainWindowView: View {
             case .settings: SettingsView(model: model)
             }
         }
+        .onChange(of: model.mainWindowOpenCount) { page = .overview; editing = nil }
         .navigationTitle(page?.rawValue ?? "tikk.")
         .frame(minWidth: 760, minHeight: 480)
         .sheet(item: $editing) { target in

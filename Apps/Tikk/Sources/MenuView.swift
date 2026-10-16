@@ -67,7 +67,7 @@ struct MenuView: View {
             if let e = model.errorMessage { Text(e).foregroundStyle(.red).font(.caption) }
             Divider()
             HStack {
-                Button("Open tikk.") { openMainWindow(using: openWindow) }
+                Button("Open tikk.") { openMainWindow(model: model, using: openWindow) }
                 Spacer()
                 Button("Stop tikk.") { NSApp.terminate(nil) }
             }

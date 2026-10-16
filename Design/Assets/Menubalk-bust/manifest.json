@@ -1,0 +1,33 @@
+{
+  "tracking": {
+    "frames": [
+      "tracking-1",
+      "tracking-2",
+      "tracking-3",
+      "tracking-4",
+      "tracking-5"
+    ],
+    "durations": [
+      0.5,
+      0.5,
+      0.5,
+      0.08,
+      0.12
+    ],
+    "loop": true
+  },
+  "idle": {
+    "frames": [
+      "idle-1",
+      "idle-2",
+      "idle-3"
+    ],
+    "durations": [
+      0.7,
+      0.7,
+      0.7
+    ],
+    "loop": true
+  },
+  "opmerking": "Template-images (zwart + 50% alpha), 20x20 pt. Animatie alleen bij lopende timer; uit bij Reduce Motion (toon dan tracking-1 / idle-3)."
+}
