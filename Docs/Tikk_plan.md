@@ -472,17 +472,17 @@ Niet als enterprise-software.
 
 ---
 
-# 07. Tikko — The tiny timekeeper
+# 07. Tikk — The tiny timekeeper
 
 Naast het woordmerk krijgt Tikk een klein karakter.
 
-Zijn naam is **Tikko**.
+Zijn naam is **Tikk**.
 
-Tikko is de mascotte van Tikk en vormt de basis voor de visuele identiteit.
+Het figuurtje is de mascotte van Tikk en vormt de basis voor de visuele identiteit.
 
 ## Het karakter
 
-Tikko is een klein, vriendelijk figuurtje dat tijd bijhoudt.
+Tikk is een klein, vriendelijk figuurtje dat tijd bijhoudt.
 
 ### Visuele kenmerken
 
@@ -499,19 +499,19 @@ Denk aan een kruising tussen een klein klokje, een digitaal huisdiertje en een m
 
 ### Belangrijk
 
-Tikko moet herkenbaar blijven als monochroom icoon van ongeveer 16–18 pixels in de menubalk.
+Tikk moet herkenbaar blijven als monochroom icoon van ongeveer 16–18 pixels in de menubalk.
 
 Daarom moet het silhouet belangrijker zijn dan de details.
 
 ---
 
-## 7.1 De verschillende states van Tikko
+## 7.1 De verschillende states van Tikk
 
-Tikko kan subtiel reageren op de status van de timer.
+Tikk kan subtiel reageren op de status van de timer.
 
 ### Idle
 
-Tikko staat stil.
+Tikk staat stil.
 
 Neutrale, ontspannen uitstraling.
 
@@ -519,7 +519,7 @@ Betekenis: er wordt geen tijd bijgehouden.
 
 ### Tracking
 
-Tikko is actief.
+Tikk is actief.
 
 Een subtiel veranderend detail maakt duidelijk dat de timer loopt.
 
@@ -531,7 +531,7 @@ Bijvoorbeeld:
 
 ### Finished
 
-Wanneer een timer wordt gestopt, kan Tikko heel kort een tevreden reactie tonen.
+Wanneer een timer wordt gestopt, kan Tikk heel kort een tevreden reactie tonen.
 
 Bijvoorbeeld een subtiele knipoog.
 
@@ -925,7 +925,7 @@ Bouw:
 Bouw:
 
 1. Definitief Tikk-logo.
-2. Tikko-mascotte.
+2. Tikk-mascotte.
 3. Aangepast menubalkicoon.
 4. Light- en dark-mode-afwerking.
 5. Subtiele micro-interacties.
@@ -975,7 +975,7 @@ Geen agressieve notificaties.
 
 ### Tiny achievements
 
-Kleine, speelse interacties met Tikko.
+Kleine, speelse interacties met Tikk.
 
 Bijvoorbeeld wanneer de gebruiker een werkweek afrondt.
 
@@ -1026,6 +1026,6 @@ Use local persistence, maintain accurate time records, and provide a clean overv
 
 Keep the application focused and avoid unnecessary features, dependencies, and complexity.
 
-The visual identity should be minimal, friendly, and slightly playful, centered around the Tikk brand and its small mascot, Tikko.
+The visual identity should be minimal, friendly, and slightly playful, centered around the Tikk brand and its small mascot, who shares the name Tikk.
 
 **The final product should feel like a tiny, beautifully crafted Mac utility — not a traditional time-tracking platform.**

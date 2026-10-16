@@ -44,7 +44,9 @@ struct MenuView: View {
                 .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
 
             Divider()
+            Button("Back-up maken…") { model.exportBackup() }
             Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
+            if let m = model.statusMessage { Text(m).foregroundStyle(.secondary).font(.caption) }
             if let e = model.errorMessage { Text(e).foregroundStyle(.red).font(.caption) }
             Spacer(minLength: 0)
             Button("Stop tikk.") { NSApp.terminate(nil) }

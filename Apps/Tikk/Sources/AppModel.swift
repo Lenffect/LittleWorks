@@ -23,6 +23,7 @@ final class AppModel {
     private(set) var todayByClient: [UUID: TimeInterval] = [:]
     private(set) var weekByClient: [UUID: TimeInterval] = [:]
     var errorMessage: String?
+    var statusMessage: String?
 
     private var sleepStartedAt: Date?
     private var ticker: Timer?
@@ -80,6 +81,12 @@ final class AppModel {
             r.isArchived = true
             perform {}
         }
+    }
+
+    func exportBackup() {
+        do {
+            if let url = try Backup.export(from: context) { statusMessage = "Back-up opgeslagen: \(url.lastPathComponent)" }
+        } catch { errorMessage = "Back-up mislukt: \(error.localizedDescription)" }
     }
 
     private func perform(_ work: () throws -> Void) {

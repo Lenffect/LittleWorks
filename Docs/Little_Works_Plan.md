@@ -40,7 +40,7 @@
 6. JSON-backup.
 
 ## Uitgesteld (pas na eigen gebruik)
-Afronden per klant, dag-/weekdoelen, omzet, herinnering, sneltoets, Tikko-animaties, onboarding, merkafwerking.
+Afronden per klant, dag-/weekdoelen, omzet, herinnering, sneltoets, Tikk-animaties, onboarding, merkafwerking.
 
 ## Daarna
 | Fase | Wat |
