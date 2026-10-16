@@ -48,7 +48,7 @@ final class AppModel {
         store = SwiftDataEntryStore(context: context)
         engine = TimerEngine(store: store)
         reload()
-        recoverAfterCrash()
+        let awaySince = pendingCrashRecovery()
         autoBackup()
         observeSleep()
         NotificationService.shared.setUp()
@@ -57,6 +57,12 @@ final class AppModel {
         }
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
+        }
+        // Ask after launch has finished, otherwise the alert can end up hidden or block startup.
+        if let awaySince {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                MainActor.assumeIsolated { self?.askAway(since: awaySince, reason: "tikk. was niet actief") }
+            }
         }
     }
 
@@ -323,11 +329,12 @@ final class AppModel {
 
     // MARK: - Crash recovery & sleep
 
-    private func recoverAfterCrash() {
+    /// If a timer was running when tikk. last ran more than 5 minutes ago, returns when we lost track.
+    private func pendingCrashRecovery() -> Date? {
         guard let running = active,
               let lastSeen = UserDefaults.standard.object(forKey: Self.lastSeenKey) as? Date,
-              Date().timeIntervalSince(lastSeen) > Self.awayThreshold else { return }
-        askAway(since: max(lastSeen, running.startTime), reason: "tikk. was niet actief")
+              Date().timeIntervalSince(lastSeen) > Self.awayThreshold else { return nil }
+        return max(lastSeen, running.startTime)
     }
 
     private func observeSleep() {
