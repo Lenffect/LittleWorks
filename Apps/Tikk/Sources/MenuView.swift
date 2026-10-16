@@ -116,11 +116,11 @@ struct MenuView: View {
     }
 
     private var idleText: String {
-        if justStopped { return "Klaar! Mooi werk." }
-        return model.clients.isEmpty ? "Voeg je eerste klant toe." : "Geen timer actief."
+        if justStopped { return tr("Klaar! Mooi werk.") }
+        return model.clients.isEmpty ? tr("Voeg je eerste klant toe.") : tr("Geen timer actief.")
     }
 
-    private func row(_ title: String, _ seconds: TimeInterval) -> some View {
+    private func row(_ title: LocalizedStringKey, _ seconds: TimeInterval) -> some View {
         HStack { Text(title); Spacer(); Text(Format.short(seconds)).monospacedDigit() }
     }
 

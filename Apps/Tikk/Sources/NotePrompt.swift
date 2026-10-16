@@ -15,7 +15,7 @@ struct NotePrompt: View {
     }
 
     private var clientName: String {
-        model.allClients.first { $0.id == entry.clientId }?.name ?? "Klant"
+        model.allClients.first { $0.id == entry.clientId }?.name ?? tr("Klant")
     }
 
     var body: some View {

@@ -3,19 +3,22 @@ import SwiftUI
 @main
 struct TikkApp: App {
     @State private var model = AppModel()
+    @AppStorage(SettingsKey.language) private var language = AppLanguage.en.rawValue
+
+    private var locale: Locale { (AppLanguage(rawValue: language) ?? .en).locale }
 
     init() { PopoverPosition.shared.start() }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuView(model: model)
+            MenuView(model: model).environment(\.locale, locale)
         } label: {
             MenuBarLabel(model: model)
         }
         .menuBarExtraStyle(.window)
 
         Window(WindowTitle.main, id: "main") {
-            MainWindowView(model: model)
+            MainWindowView(model: model).environment(\.locale, locale)
         }
         .defaultSize(width: 920, height: 620)
     }

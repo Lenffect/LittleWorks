@@ -25,8 +25,8 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate, @un
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         let actions = [
-            UNNotificationAction(identifier: "continue", title: "Ja, ik werk door"),
-            UNNotificationAction(identifier: "stop", title: "Stop timer", options: []),
+            UNNotificationAction(identifier: "continue", title: tr("Ja, ik werk door")),
+            UNNotificationAction(identifier: "stop", title: tr("Stop timer"), options: []),
         ]
         center.setNotificationCategories([
             UNNotificationCategory(identifier: Self.category, actions: actions, intentIdentifiers: [])
@@ -39,16 +39,16 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate, @un
 
     func statusText() async -> String {
         switch await UNUserNotificationCenter.current().notificationSettings().authorizationStatus {
-        case .authorized, .provisional, .ephemeral: "Meldingen staan aan."
-        case .denied: "Meldingen staan uit voor tikk. Zet ze aan in Systeeminstellingen → Meldingen."
-        default: "Nog geen toestemming voor meldingen."
+        case .authorized, .provisional, .ephemeral: tr("Meldingen staan aan.")
+        case .denied: tr("Meldingen staan uit voor tikk. Zet ze aan in Systeeminstellingen → Meldingen.")
+        default: tr("Nog geen toestemming voor meldingen.")
         }
     }
 
     func send(clientName: String, elapsed: TimeInterval, entryId: UUID) {
         let content = UNMutableNotificationContent()
-        content.title = "Werk je nog aan \(clientName)?"
-        content.body = "De timer loopt al \(Format.short(elapsed)) uur."
+        content.title = tr("Werk je nog aan %@?", clientName)
+        content.body = tr("De timer loopt al %@ uur.", Format.short(elapsed))
         content.sound = .default
         content.categoryIdentifier = Self.category
         content.userInfo = ["entryId": entryId.uuidString]

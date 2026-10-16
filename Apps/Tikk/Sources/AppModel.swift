@@ -66,7 +66,7 @@ final class AppModel {
         // Ask after launch has finished, otherwise the alert can end up hidden or block startup.
         if let awaySince {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                MainActor.assumeIsolated { self?.askAway(since: awaySince, reason: "tikk. was niet actief") }
+                MainActor.assumeIsolated { self?.askAway(since: awaySince, reason: tr("tikk. was niet actief"), asleep: false) }
             }
         }
     }
@@ -83,7 +83,7 @@ final class AppModel {
         set {
             do {
                 if newValue { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-            } catch { errorMessage = "Opstarten bij inloggen mislukt: \(error.localizedDescription)" }
+            } catch { errorMessage = tr("Opstarten bij inloggen mislukt: %@", error.localizedDescription) }
         }
     }
 
@@ -129,8 +129,8 @@ final class AppModel {
         guard !trimmed.isEmpty else { return false }
         if let existing = allClients.first(where: { $0.name.compare(trimmed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame }) {
             errorMessage = existing.isArchived
-                ? "\"\(existing.name)\" bestaat al als gearchiveerde klant. Herstel die onder Klanten."
-                : "Er is al een klant met de naam \"\(existing.name)\"."
+                ? tr("\"%@\" bestaat al als gearchiveerde klant. Herstel die onder Klanten.", existing.name)
+                : tr("Er is al een klant met de naam \"%@\".", existing.name)
             return false
         }
         errorMessage = nil
@@ -158,7 +158,7 @@ final class AppModel {
         for entry in entries {
             for seg in Totals.segments(of: entry, now: now, calendar: cal) {
                 byDay[seg.day, default: []].append(DayRow(
-                    entryId: entry.id, clientName: names[entry.clientId] ?? "Onbekend", note: entry.note,
+                    entryId: entry.id, clientName: names[entry.clientId] ?? tr("Onbekend"), note: entry.note,
                     start: seg.start, end: seg.end, isRunning: entry.isActive && seg.end == now))
             }
         }
@@ -180,7 +180,7 @@ final class AppModel {
     @discardableResult
     func updateEntry(_ entry: TimeEntry) -> Bool {
         do { try engine.update(entry) } catch TimerError.endBeforeStart {
-            errorMessage = "Het eind ligt vóór de start."
+            errorMessage = tr("Het eind ligt vóór de start.")
             return false
         } catch { errorMessage = error.localizedDescription; return false }
         reload()
@@ -192,8 +192,8 @@ final class AppModel {
 
     func exportBackup() {
         do {
-            if let url = try Backup.export(from: context) { statusMessage = "Back-up opgeslagen: \(url.lastPathComponent)" }
-        } catch { errorMessage = "Back-up mislukt: \(error.localizedDescription)" }
+            if let url = try Backup.export(from: context) { statusMessage = tr("Back-up opgeslagen: %@", url.lastPathComponent) }
+        } catch { errorMessage = tr("Back-up mislukt: %@", error.localizedDescription) }
     }
 
     /// Lets the user pick a JSON backup and replaces all current data with it, after confirmation.
@@ -201,7 +201,7 @@ final class AppModel {
     func restoreBackup() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
-        panel.message = "Kies een tikk.-back-up (JSON)"
+        panel.message = tr("Kies een tikk.-back-up (JSON)")
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
@@ -210,15 +210,14 @@ final class AppModel {
 
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "Back-up terugzetten?"
-            alert.informativeText = """
-            Back-up van \(file.exportedAt.formatted(date: .long, time: .shortened)): \(file.clients.count) klanten, \(file.entries.count) registraties.
-
-            Je huidige gegevens (\(current.clients.count) klanten, \(current.entries.count) registraties) worden hiermee vervangen. \
-            Ze worden eerst bewaard in een bestand in je back-upmap.
-            """
-            alert.addButton(withTitle: "Vervangen")
-            alert.addButton(withTitle: "Annuleer")
+            alert.messageText = tr("Back-up terugzetten?")
+            alert.informativeText = tr("Back-up van %@: %lld klanten, %lld registraties.",
+                file.exportedAt.formatted(Date.FormatStyle(date: .long, time: .shortened).locale(L10n.language.locale)),
+                file.clients.count, file.entries.count)
+                + "\n\n" + tr("Je huidige gegevens (%lld klanten, %lld registraties) worden hiermee vervangen. Ze worden eerst bewaard in een bestand in je back-upmap.",
+                    current.clients.count, current.entries.count)
+            alert.addButton(withTitle: tr("Vervangen"))
+            alert.addButton(withTitle: tr("Annuleer"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
 
             let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)
@@ -230,21 +229,21 @@ final class AppModel {
             try Backup.replaceAll(in: context, with: file)
             reload()
             autoBackup()
-            statusMessage = "Back-up teruggezet. Je vorige gegevens staan in \(safety.lastPathComponent)."
+            statusMessage = tr("Back-up teruggezet. Je vorige gegevens staan in %@.", safety.lastPathComponent)
         } catch {
-            errorMessage = "Terugzetten mislukt: \(error.localizedDescription)"
+            errorMessage = tr("Terugzetten mislukt: %@", error.localizedDescription)
             reload()
         }
     }
 
     /// Writes the rolling backup file when enabled. Never throws; failures show up in settings.
     func autoBackup() {
-        guard AutoBackup.isEnabled else { autoBackupStatus = "Automatische back-up staat uit."; return }
+        guard AutoBackup.isEnabled else { autoBackupStatus = tr("Automatische back-up staat uit."); return }
         do {
             let url = try AutoBackup.write(try Backup.snapshot(from: context))
-            autoBackupStatus = "Laatste back-up \(Date().formatted(date: .omitted, time: .standard)) → \(url.path)"
+            autoBackupStatus = tr("Laatste back-up %@ → %@", Date().formatted(date: .omitted, time: .standard), url.path)
         } catch {
-            autoBackupStatus = "Automatische back-up mislukt: \(error.localizedDescription)"
+            autoBackupStatus = tr("Automatische back-up mislukt: %@", error.localizedDescription)
         }
     }
 
@@ -332,8 +331,8 @@ final class AppModel {
                 entries: exportEntries(in: interval, clientIds: clientIds),
                 summary: report(in: interval, clientIds: clientIds),
                 interval: interval, includeIncome: includeIncome)
-            if let url { statusMessage = "Rapport opgeslagen: \(url.lastPathComponent)" }
-        } catch { errorMessage = "Export mislukt: \(error.localizedDescription)" }
+            if let url { statusMessage = tr("Rapport opgeslagen: %@", url.lastPathComponent) }
+        } catch { errorMessage = tr("Export mislukt: %@", error.localizedDescription) }
     }
 
     private func perform(_ work: () throws -> Void) {
@@ -389,7 +388,7 @@ final class AppModel {
 
     func sendTestReminder() {
         NotificationService.shared.send(
-            clientName: activeClient?.name ?? "een klant", elapsed: activeElapsed, entryId: active?.id ?? UUID())
+            clientName: activeClient?.name ?? tr("een klant"), elapsed: activeElapsed, entryId: active?.id ?? UUID())
     }
 
     private func tick() {
@@ -423,21 +422,21 @@ final class AppModel {
                 guard let self, let slept = self.sleepStartedAt else { return }
                 self.sleepStartedAt = nil
                 if self.active != nil, Date().timeIntervalSince(slept) > Self.awayThreshold {
-                    self.askAway(since: slept, reason: "Je Mac sliep")
+                    self.askAway(since: slept, reason: tr("Je Mac sliep"), asleep: true)
                 }
             }
         }
     }
 
     /// Ask what to do with the time since `since` while a timer was running.
-    private func askAway(since: Date, reason: String) {
+    private func askAway(since: Date, reason: String, asleep: Bool) {
         let minutes = Int(Date().timeIntervalSince(since) / 60)
         let alert = NSAlert()
         alert.messageText = "\(reason) \(Format.duration(Date().timeIntervalSince(since))) (\(minutes) min)"
-        alert.icon = NSImage.tikk(reason.contains("sliep") ? .slaap : .oeps)
-        alert.informativeText = "De timer liep door. Wat doen we met die tijd?"
-        alert.addButton(withTitle: "Stop op het moment van weggaan")
-        alert.addButton(withTitle: "Tijd behouden")
+        alert.icon = NSImage.tikk(asleep ? .slaap : .oeps)
+        alert.informativeText = tr("De timer liep door. Wat doen we met die tijd?")
+        alert.addButton(withTitle: tr("Stop op het moment van weggaan"))
+        alert.addButton(withTitle: tr("Tijd behouden"))
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             perform { try engine.stop(at: since) }

@@ -9,6 +9,7 @@ struct ReportView: View {
         case thisMonth = "Deze maand", lastMonth = "Vorige maand"
         case thisYear = "Dit jaar", custom = "Aangepast"
         var id: String { rawValue }
+        var title: LocalizedStringKey { LocalizedStringKey(rawValue) }
     }
 
     @State private var preset: Preset = .thisMonth
@@ -49,7 +50,7 @@ struct ReportView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Picker("Periode", selection: $preset) {
-                    ForEach(Preset.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(Preset.allCases) { Text($0.title).tag($0) }
                 }
                 clientMenu
             }
@@ -75,12 +76,12 @@ struct ReportView: View {
                         }
                         VStack(alignment: .trailing, spacing: 0) {
                             Text(Format.short(row.seconds)).monospacedDigit()
-                            Text(String(format: "%.2f u", row.hours).replacingOccurrences(of: ".", with: ","))
+                            Text(tr("%@ u", row.hours.formatted(.number.precision(.fractionLength(2)).locale(L10n.language.locale))))
                                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                         }
                         .frame(width: 70, alignment: .trailing)
                         if showIncome {
-                            Text(row.income.map { $0.formatted(.currency(code: "EUR")) } ?? "–")
+                            Text(row.income.map { $0.formatted(.currency(code: "EUR").locale(L10n.language.locale)) } ?? "–")
                                 .monospacedDigit().frame(width: 90, alignment: .trailing)
                         }
                     }
@@ -93,7 +94,7 @@ struct ReportView: View {
                 Spacer()
                 Text(Format.short(totalSeconds)).monospacedDigit().font(.headline)
                 if showIncome {
-                    Text(totalIncome.formatted(.currency(code: "EUR")))
+                    Text(totalIncome.formatted(.currency(code: "EUR").locale(L10n.language.locale)))
                         .monospacedDigit().font(.headline).frame(width: 90, alignment: .trailing)
                 }
             }
@@ -126,7 +127,7 @@ struct ReportView: View {
         } label: {
             switch selectedClients.count {
             case 0: Text("Alle klanten")
-            case 1: Text(model.allClients.first { selectedClients.contains($0.id) }?.name ?? "1 klant")
+            case 1: Text(model.allClients.first { selectedClients.contains($0.id) }?.name ?? tr("1 klant"))
             default: Text("\(selectedClients.count) klanten")
             }
         }
@@ -135,6 +136,7 @@ struct ReportView: View {
     private var periodLabel: String {
         let i = interval
         let last = i.end.addingTimeInterval(-1)
-        return "\(i.start.formatted(date: .abbreviated, time: .omitted)) – \(last.formatted(date: .abbreviated, time: .omitted))"
+        let f = Date.FormatStyle(date: .abbreviated, time: .omitted).locale(L10n.language.locale)
+        return "\(i.start.formatted(f)) – \(last.formatted(f))"
     }
 }

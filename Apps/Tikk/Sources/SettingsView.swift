@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.autoBackupEnabled) private var autoBackup = true
     @AppStorage(SettingsKey.autoBackupPath) private var backupPath = SettingsKey.defaultBackupPath
 
+    @AppStorage(SettingsKey.language) private var language = AppLanguage.en.rawValue
     @State private var notificationStatus = ""
     @AppStorage(ReminderSettings.enabledKey) private var remind = false
     @AppStorage(ReminderSettings.firstKey) private var remindFirst = ReminderSettings.defaultFirst
@@ -70,6 +71,17 @@ struct SettingsView: View {
             }
 
             Section("Algemeen") {
+                Picker("Taal", selection: $language) {
+                    ForEach(AppLanguage.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .onChange(of: language) {
+                    if let l = AppLanguage(rawValue: language) { L10n.persist(l) }
+                    NotificationService.shared.setUp()
+                    notificationStatus = ""
+                    Task { notificationStatus = await NotificationService.shared.statusText() }
+                }
+                Text("Sommige systeemvensters (zoals bestandskiezers) volgen na een herstart.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Toggle("Toon totalen en urencriterium in het menu", isOn: $showMenuSummary)
                 Picker("Menubalk toont", selection: $menuBarStyle) {
                     ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0.rawValue) }
@@ -108,7 +120,7 @@ struct SettingsView: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Kies"
+        panel.prompt = tr("Kies")
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK, let url = panel.url { setPath(url.path) }
     }

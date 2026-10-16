@@ -1,9 +1,10 @@
 import AppKit
+import SwiftUI
 
 enum MenuBarStyle: String, CaseIterable, Identifiable {
     case both, iconOnly, timeOnly
     var id: String { rawValue }
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .both: "Icoon en tijd"
         case .iconOnly: "Alleen icoon"

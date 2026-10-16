@@ -5,7 +5,7 @@ struct OnboardingView: View {
     @AppStorage(SettingsKey.onboardingDone) private var done = false
     @State private var page = 0
 
-    private struct Page { let title: String; let text: String }
+    private struct Page { let title: LocalizedStringKey; let text: LocalizedStringKey }
     private let pages = [
         Page(title: "Hoi, ik ben Tikk.", text: "Ik houd je uren bij, rustig vanuit je menubalk."),
         Page(title: "Klik op een klant.", text: "Eén klik start de timer, nog een klik stopt hem. Wisselen van klant kan ook met één klik."),
@@ -34,7 +34,7 @@ struct OnboardingView: View {
             HStack {
                 Button("Overslaan") { done = true }.buttonStyle(.plain).foregroundStyle(.secondary)
                 Spacer()
-                Button(page == pages.count - 1 ? "Aan de slag" : "Volgende") {
+                Button(page == pages.count - 1 ? LocalizedStringKey("Aan de slag") : LocalizedStringKey("Volgende")) {
                     if page == pages.count - 1 { done = true } else { page += 1 }
                 }
                 .buttonStyle(.borderedProminent)

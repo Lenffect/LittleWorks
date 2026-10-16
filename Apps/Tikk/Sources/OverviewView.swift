@@ -58,7 +58,7 @@ struct OverviewView: View {
                                     }
                                     if row.isRunning { Text("● loopt").foregroundStyle(.orange).font(.caption) }
                                     Spacer()
-                                    Text("\(row.start.formatted(date: .omitted, time: .shortened)) – \(row.isRunning ? "nu" : row.end.formatted(date: .omitted, time: .shortened))")
+                                    Text("\(row.start.formatted(date: .omitted, time: .shortened)) – \(row.isRunning ? tr("nu") : row.end.formatted(date: .omitted, time: .shortened))")
                                         .foregroundStyle(.secondary)
                                     Text(Format.short(row.duration)).monospacedDigit().frame(width: 56, alignment: .trailing)
                                 }

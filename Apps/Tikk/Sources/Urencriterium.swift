@@ -14,6 +14,7 @@ enum SettingsKey {
     static let reportShowIncome = "reportShowIncome"
     static let menuAnimation = "menuAnimation"
     static let onboardingDone = "onboardingDone"
+    static let language = "appLanguage"
 }
 
 /// Progress of hours worked this calendar year towards the urencriterium.

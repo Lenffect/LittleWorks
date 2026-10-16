@@ -59,9 +59,10 @@ struct ClientsView: View {
 
     private func effectiveRate(fee: Decimal, seconds: TimeInterval) -> String {
         let hours = seconds / 3600
-        guard hours > 0 else { return "Deze maand nog geen uren" }
+        guard hours > 0 else { return tr("Deze maand nog geen uren") }
         let perHour = NSDecimalNumber(decimal: fee).doubleValue / hours
-        return "Deze maand: \(Format.short(seconds)) u → effectief € \(String(format: "%.2f", perHour))/u"
+        let amount = perHour.formatted(.number.precision(.fractionLength(2)).locale(L10n.language.locale))
+        return tr("Deze maand: %@ u → effectief € %@/u", Format.short(seconds), amount)
     }
 
     private func add() {

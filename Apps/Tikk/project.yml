@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  developmentLanguage: nl
 packages:
   LittleWorksCore:
     path: ../../Packages/LittleWorksCore
@@ -25,6 +26,7 @@ targets:
       properties:
         CFBundleDisplayName: tikk.
         LSUIElement: true
+        CFBundleLocalizations: [en, nl]
         LSApplicationCategoryType: public.app-category.productivity
     settings:
       base:

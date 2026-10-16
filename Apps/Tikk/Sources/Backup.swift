@@ -16,8 +16,8 @@ enum BackupFormat: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .json: "JSON (volledige back-up)"
-        case .csv: "CSV (voor Excel)"
+        case .json: tr("JSON (volledige back-up)")
+        case .csv: tr("CSV (voor Excel)")
         }
     }
     var type: UTType { self == .json ? .json : .commaSeparatedText }
@@ -51,13 +51,13 @@ enum Backup {
         fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
         func q(_ s: String) -> String { "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
 
-        var lines = ["Klant;Start;Eind;Uren;Notitie"]
+        var lines = [tr("Klant;Start;Eind;Uren;Notitie")]
         for e in file.entries {
             let hours = String(format: "%.2f", e.duration(at: Date()) / 3600).replacingOccurrences(of: ".", with: ",")
             lines.append([
-                q(names[e.clientId] ?? "Onbekend"),
+                q(names[e.clientId] ?? tr("Onbekend")),
                 fmt.string(from: e.startTime),
-                e.endTime.map { fmt.string(from: $0) } ?? "loopt",
+                e.endTime.map { fmt.string(from: $0) } ?? tr("loopt"),
                 hours,
                 q(e.note ?? ""),
             ].joined(separator: ";"))
@@ -70,7 +70,7 @@ enum Backup {
         decoder.dateDecodingStrategy = .iso8601
         let file = try decoder.decode(BackupFile.self, from: Data(contentsOf: url))
         guard file.version == 1 else {
-            throw NSError(domain: "tikk", code: 2, userInfo: [NSLocalizedDescriptionKey: "Onbekende back-upversie \(file.version)"])
+            throw NSError(domain: "tikk", code: 2, userInfo: [NSLocalizedDescriptionKey: tr("Onbekende back-upversie %lld", file.version)])
         }
         return file
     }
@@ -122,7 +122,7 @@ private final class FormatPicker: NSObject {
         self.panel = panel
         self.baseName = baseName
         popup.addItems(withTitles: BackupFormat.allCases.map(\.title))
-        let label = NSTextField(labelWithString: "Formaat:")
+        let label = NSTextField(labelWithString: tr("Formaat:"))
         let stack = NSStackView(views: [label, popup])
         stack.spacing = 8
         stack.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)

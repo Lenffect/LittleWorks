@@ -7,6 +7,7 @@ struct MainWindowView: View {
     enum Page: String, CaseIterable, Identifiable {
         case overview = "Overzicht", report = "Rapport", clients = "Klanten", settings = "Instellingen"
         var id: String { rawValue }
+        var title: LocalizedStringKey { LocalizedStringKey(rawValue) }
         var icon: String {
             switch self {
             case .overview: "list.bullet.rectangle"
@@ -25,7 +26,7 @@ struct MainWindowView: View {
     var body: some View {
         NavigationSplitView {
             List(Page.allCases, selection: $page) { p in
-                Label(p.rawValue, systemImage: p.icon).tag(p)
+                Label(p.title, systemImage: p.icon).tag(p)
             }
             .navigationSplitViewColumnWidth(min: 160, ideal: 180, max: 220)
             .safeAreaInset(edge: .bottom) {
@@ -45,7 +46,7 @@ struct MainWindowView: View {
             }
         }
         .onChange(of: model.mainWindowOpenCount) { page = .overview; editing = nil }
-        .navigationTitle(page?.rawValue ?? "tikk.")
+        .navigationTitle(page.map { Text($0.title) } ?? Text("tikk."))
         .frame(minWidth: 760, minHeight: 480)
         .sheet(item: $editing) { target in
             if let entry = model.entry(id: target.id) {

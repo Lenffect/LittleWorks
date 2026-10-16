@@ -111,7 +111,7 @@ enum XLSX {
         try zip.run()
         zip.waitUntilExit()
         guard zip.terminationStatus == 0 else {
-            throw NSError(domain: "tikk", code: 1, userInfo: [NSLocalizedDescriptionKey: "Zippen mislukt"])
+            throw NSError(domain: "tikk", code: 1, userInfo: [NSLocalizedDescriptionKey: tr("Zippen mislukt")])
         }
         if fm.fileExists(atPath: url.path) { try fm.removeItem(at: url) }
         try fm.copyItem(at: tmp, to: url)
@@ -191,8 +191,8 @@ enum ReportExport {
     }
 
     private static func registrations(_ entries: [ExportEntry], includeIncome: Bool) -> XSheet {
-        var header: [XCell] = ["Datum", "Klant", "Start", "Eind", "Uren", "Notitie"].map { .bold($0) }
-        if includeIncome { header += [.bold("Uurloon"), .bold("Bedrag")] }
+        var header: [XCell] = ["Datum", "Klant", "Start", "Eind", "Uren", "Notitie"].map { .bold(tr($0)) }
+        if includeIncome { header += [.bold(tr("Uurloon")), .bold(tr("Bedrag"))] }
         var rows = [header]
         var totalHours = 0.0
         var totalMoney: Decimal = 0
@@ -201,7 +201,7 @@ enum ReportExport {
             totalHours += hours
             var row: [XCell] = [
                 .date(e.start), .text(e.client.name), .time(e.start),
-                e.isRunning ? .text("loopt") : .time(e.end),
+                e.isRunning ? .text(tr("loopt")) : .time(e.end),
                 .hours(hours), .text(e.note ?? ""),
             ]
             if includeIncome {
@@ -213,10 +213,10 @@ enum ReportExport {
             }
             rows.append(row)
         }
-        var total: [XCell] = [.bold("Totaal"), .empty, .empty, .empty, .boldHours(totalHours), .empty]
+        var total: [XCell] = [.bold(tr("Totaal")), .empty, .empty, .empty, .boldHours(totalHours), .empty]
         if includeIncome { total += [.empty, .boldMoney(totalMoney)] }
         rows += [[], total]
-        return XSheet(name: "Registraties",
+        return XSheet(name: tr("Registraties"),
                       widths: includeIncome ? [12, 22, 9, 9, 9, 50, 11, 12] : [12, 22, 9, 9, 9, 50],
                       rows: rows)
     }
@@ -224,12 +224,12 @@ enum ReportExport {
     private static func summarySheet(_ summary: [ReportRow], interval: DateInterval, includeIncome: Bool) -> XSheet {
         let last = interval.end.addingTimeInterval(-1)
         var rows: [[XCell]] = [
-            [.bold("tikk. rapport")],
-            [.text("Periode"), .text("\(interval.start.formatted(date: .long, time: .omitted)) t/m \(last.formatted(date: .long, time: .omitted))")],
+            [.bold(tr("tikk. rapport"))],
+            [.text(tr("Periode")), .text(tr("%@ t/m %@", interval.start.formatted(Date.FormatStyle(date: .long, time: .omitted).locale(L10n.language.locale)), last.formatted(Date.FormatStyle(date: .long, time: .omitted).locale(L10n.language.locale))))],
             [],
         ]
-        var header: [XCell] = [.bold("Klant"), .bold("Uren")]
-        if includeIncome { header += [.bold("Uurloon"), .bold("Bedrag")] }
+        var header: [XCell] = [.bold(tr("Klant")), .bold(tr("Uren"))]
+        if includeIncome { header += [.bold(tr("Uurloon")), .bold(tr("Bedrag"))] }
         rows.append(header)
         var totalHours = 0.0
         var totalMoney: Decimal = 0
@@ -244,9 +244,9 @@ enum ReportExport {
             }
             rows.append(row)
         }
-        var total: [XCell] = [.bold("Totaal"), .boldHours(totalHours)]
+        var total: [XCell] = [.bold(tr("Totaal")), .boldHours(totalHours)]
         if includeIncome { total += [.empty, .boldMoney(totalMoney)] }
         rows += [[], total]
-        return XSheet(name: "Samenvatting", widths: [28, 12, 12, 14], rows: rows)
+        return XSheet(name: tr("Samenvatting"), widths: [28, 12, 12, 14], rows: rows)
     }
 }
