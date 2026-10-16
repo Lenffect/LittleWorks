@@ -15,14 +15,5 @@ struct TikkApp: App {
             }
         }
         .menuBarExtraStyle(.window)
-
-        Window(WindowTitle.settings, id: "settings") {
-            SettingsView()
-        }
-        .windowResizability(.contentSize)
-
-        Window(WindowTitle.overview, id: "overview") {
-            OverviewView(model: model)
-        }
     }
 }

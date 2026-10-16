@@ -3,10 +3,46 @@ import LittleWorksCore
 
 struct MenuView: View {
     let model: AppModel
-    @Environment(\.openWindow) private var openWindow
     @State private var newClient = ""
+    @State private var screen: Screen = .main
+
+    enum Screen: Equatable { case main, overview, settings, edit(UUID) }
 
     var body: some View {
+        switch screen {
+        case .main: main
+        case .overview:
+            page("Overzicht") {
+                OverviewView(model: model) { screen = .edit($0) }
+            }
+            .frame(width: 560, height: 480)
+        case .settings:
+            page("Instellingen") { SettingsView() }
+        case .edit(let id):
+            if let entry = model.entry(id: id) {
+                EntryEditor(model: model, entry: entry) { screen = .overview }
+            } else {
+                page("Overzicht") { Text("Registratie bestaat niet meer.") }
+                    .onAppear { screen = .overview }
+            }
+        }
+    }
+
+    private func page<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button { screen = .main } label: { Label("Terug", systemImage: "chevron.left") }
+                Spacer()
+                Text(title).font(.headline)
+                Spacer()
+                Color.clear.frame(width: 60, height: 1)
+            }
+            .padding([.horizontal, .top], 14)
+            content()
+        }
+    }
+
+    private var main: some View {
         HStack(alignment: .top, spacing: 14) {
             controls.frame(width: 190)
             Divider()
@@ -46,8 +82,8 @@ struct MenuView: View {
                 .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
 
             Divider()
-            Button("Overzicht openen") { openInFront("overview", title: WindowTitle.overview, using: openWindow) }
-            Button("Instellingen…") { openInFront("settings", title: WindowTitle.settings, using: openWindow) }
+            Button("Overzicht openen") { screen = .overview }
+            Button("Instellingen…") { screen = .settings }
             Button("Back-up maken…") { model.exportBackup() }
             Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
             if let m = model.statusMessage { Text(m).foregroundStyle(.secondary).font(.caption) }

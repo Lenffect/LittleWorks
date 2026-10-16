@@ -21,8 +21,8 @@ struct DayGroup: Identifiable {
 
 struct OverviewView: View {
     let model: AppModel
+    let onEdit: (UUID) -> Void
     @State private var days: [DayGroup] = []
-    @State private var editing: TimeEntry?
 
     /// Changes every minute and whenever the timer or clients change, to refresh the list.
     private var refreshKey: String {
@@ -33,10 +33,6 @@ struct OverviewView: View {
         VStack(spacing: 0) {
             UrencriteriumBar(yearSeconds: model.yearTotal).padding([.horizontal, .top], 16)
             content
-        }
-        .frame(minWidth: 520, minHeight: 360)
-        .sheet(item: $editing) { entry in
-            EntryEditor(model: model, entry: entry) { editing = nil; days = model.overviewDays() }
         }
         .task(id: refreshKey) { days = model.overviewDays() }
     }
@@ -63,7 +59,7 @@ struct OverviewView: View {
                                     Text(Format.short(row.duration)).monospacedDigit().frame(width: 56, alignment: .trailing)
                                 }
                                 .contentShape(Rectangle())
-                                .onTapGesture { editing = model.entry(id: row.entryId) }
+                                .onTapGesture { onEdit(row.entryId) }
                             }
                         } header: {
                             HStack {
