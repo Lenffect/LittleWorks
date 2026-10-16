@@ -62,6 +62,7 @@ struct SettingsView: View {
                     Text(status).font(.caption).foregroundStyle(.secondary)
                 }
                 Button("Back-up maken als bestand…") { model.exportBackup() }
+                Button("Back-up terugzetten…") { model.restoreBackup() }
                 if let m = model.statusMessage { Text(m).font(.caption).foregroundStyle(.secondary) }
             }
 

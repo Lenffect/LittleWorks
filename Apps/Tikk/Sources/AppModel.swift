@@ -178,6 +178,47 @@ final class AppModel {
         } catch { errorMessage = "Back-up mislukt: \(error.localizedDescription)" }
     }
 
+    /// Lets the user pick a JSON backup and replaces all current data with it, after confirmation.
+    /// The current data is saved to a separate file first, so the restore itself can be undone.
+    func restoreBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.message = "Kies een tikk.-back-up (JSON)"
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let file = try Backup.read(from: url)
+            let current = try Backup.snapshot(from: context)
+
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Back-up terugzetten?"
+            alert.informativeText = """
+            Back-up van \(file.exportedAt.formatted(date: .long, time: .shortened)): \(file.clients.count) klanten, \(file.entries.count) registraties.
+
+            Je huidige gegevens (\(current.clients.count) klanten, \(current.entries.count) registraties) worden hiermee vervangen. \
+            Ze worden eerst bewaard in een bestand in je back-upmap.
+            """
+            alert.addButton(withTitle: "Vervangen")
+            alert.addButton(withTitle: "Annuleer")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+            let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)
+                .timeSeparator(.omitted).dateSeparator(.omitted))
+            let safety = AutoBackup.folder.appendingPathComponent("tikk-voor-terugzetten-\(stamp).json")
+            try FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
+            try Backup.data(for: current, format: .json).write(to: safety, options: .atomic)
+
+            try Backup.replaceAll(in: context, with: file)
+            reload()
+            autoBackup()
+            statusMessage = "Back-up teruggezet. Je vorige gegevens staan in \(safety.lastPathComponent)."
+        } catch {
+            errorMessage = "Terugzetten mislukt: \(error.localizedDescription)"
+            reload()
+        }
+    }
+
     /// Writes the rolling backup file when enabled. Never throws; failures show up in settings.
     func autoBackup() {
         guard AutoBackup.isEnabled else { autoBackupStatus = "Automatische back-up staat uit."; return }

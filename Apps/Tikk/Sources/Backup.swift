@@ -65,6 +65,31 @@ enum Backup {
         return "\u{FEFF}" + lines.joined(separator: "\n") + "\n"
     }
 
+    static func read(from url: URL) throws -> BackupFile {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let file = try decoder.decode(BackupFile.self, from: Data(contentsOf: url))
+        guard file.version == 1 else {
+            throw NSError(domain: "tikk", code: 2, userInfo: [NSLocalizedDescriptionKey: "Onbekende back-upversie \(file.version)"])
+        }
+        return file
+    }
+
+    /// Replaces ALL data with the contents of `file`. A timer that was still running in the
+    /// backup is closed at the time the backup was made.
+    @MainActor
+    static func replaceAll(in context: ModelContext, with file: BackupFile) throws {
+        for e in try context.fetch(FetchDescriptor<EntryRecord>()) { context.delete(e) }
+        for c in try context.fetch(FetchDescriptor<ClientRecord>()) { context.delete(c) }
+        try context.save()
+        for c in file.clients { context.insert(ClientRecord(c)) }
+        for var e in file.entries {
+            if e.endTime == nil { e.endTime = max(e.startTime, file.exportedAt) }
+            context.insert(EntryRecord(e))
+        }
+        try context.save()
+    }
+
     /// Asks where to save and in which format, then writes the file.
     @MainActor
     static func export(from context: ModelContext) throws -> URL? {
