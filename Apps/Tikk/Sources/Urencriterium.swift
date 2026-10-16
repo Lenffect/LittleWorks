@@ -15,6 +15,8 @@ enum SettingsKey {
     static let menuAnimation = "menuAnimation"
     static let onboardingDone = "onboardingDone"
     static let language = "appLanguage"
+    static let projectsEnabled = "projectsEnabled"
+    static let budgetAlerts = "projectBudgetAlerts"
 }
 
 /// Progress of hours worked this calendar year towards the urencriterium.
@@ -39,6 +41,14 @@ struct UrencriteriumBar: View {
             }
         }
     }
+}
+
+enum BudgetAlertSetting {
+    static var isEnabled: Bool { UserDefaults.standard.object(forKey: SettingsKey.budgetAlerts) as? Bool ?? true }
+}
+
+enum ProjectsSetting {
+    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.projectsEnabled) }
 }
 
 enum NoteSetting {

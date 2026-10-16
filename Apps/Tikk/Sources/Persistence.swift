@@ -24,6 +24,34 @@ final class ClientRecord {
 }
 
 @Model
+final class ProjectRecord {
+    @Attribute(.unique) var id: UUID
+    var clientId: UUID
+    var name: String
+    var kindRaw: String
+    var price: Decimal?
+    var estimatedHours: Double?
+    var isArchived: Bool
+    var createdAt: Date
+
+    init(_ p: Project) {
+        id = p.id; clientId = p.clientId; name = p.name; kindRaw = p.kind.rawValue
+        price = p.price; estimatedHours = p.estimatedHours
+        isArchived = p.isArchived; createdAt = p.createdAt
+    }
+
+    func apply(_ p: Project) {
+        clientId = p.clientId; name = p.name; kindRaw = p.kind.rawValue
+        price = p.price; estimatedHours = p.estimatedHours; isArchived = p.isArchived
+    }
+
+    var value: Project {
+        Project(id: id, clientId: clientId, name: name, kind: ProjectKind(rawValue: kindRaw) ?? .hourly,
+                price: price, estimatedHours: estimatedHours, isArchived: isArchived, createdAt: createdAt)
+    }
+}
+
+@Model
 final class EntryRecord {
     @Attribute(.unique) var id: UUID
     var clientId: UUID

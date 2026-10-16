@@ -9,6 +9,8 @@ struct BackupFile: Codable {
     var exportedAt: Date
     var clients: [Client]
     var entries: [TimeEntry]
+    /// Absent in backups made before projects existed.
+    var projects: [Project]?
 }
 
 enum BackupFormat: String, CaseIterable {
@@ -28,7 +30,8 @@ enum Backup {
     static func snapshot(from context: ModelContext) throws -> BackupFile {
         let clients = try context.fetch(FetchDescriptor<ClientRecord>(sortBy: [SortDescriptor(\.createdAt)])).map(\.value)
         let entries = try context.fetch(FetchDescriptor<EntryRecord>(sortBy: [SortDescriptor(\.startTime)])).map(\.value)
-        return BackupFile(exportedAt: Date(), clients: clients, entries: entries)
+        let projects = try context.fetch(FetchDescriptor<ProjectRecord>(sortBy: [SortDescriptor(\.createdAt)])).map(\.value)
+        return BackupFile(exportedAt: Date(), clients: clients, entries: entries, projects: projects)
     }
 
     static func data(for file: BackupFile, format: BackupFormat) throws -> Data {
@@ -81,8 +84,10 @@ enum Backup {
     static func replaceAll(in context: ModelContext, with file: BackupFile) throws {
         for e in try context.fetch(FetchDescriptor<EntryRecord>()) { context.delete(e) }
         for c in try context.fetch(FetchDescriptor<ClientRecord>()) { context.delete(c) }
+        for p in try context.fetch(FetchDescriptor<ProjectRecord>()) { context.delete(p) }
         try context.save()
         for c in file.clients { context.insert(ClientRecord(c)) }
+        for p in file.projects ?? [] { context.insert(ProjectRecord(p)) }
         for var e in file.entries {
             if e.endTime == nil { e.endTime = max(e.startTime, file.exportedAt) }
             context.insert(EntryRecord(e))

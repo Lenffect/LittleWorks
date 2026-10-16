@@ -21,15 +21,16 @@ public final class TimerEngine {
 
     /// Starts a timer for `clientId`. Any running timer is stopped at the same
     /// instant, so switching never leaves a gap or an overlap.
-    /// Starting the client that is already running does nothing.
+    /// Starting the client (and project) that is already running does nothing;
+    /// a different project of the same client switches.
     @discardableResult
-    public func start(clientId: UUID, note: String? = nil) throws -> TimeEntry {
+    public func start(clientId: UUID, projectId: UUID? = nil, note: String? = nil) throws -> TimeEntry {
         let now = time.now()
         if let running = try store.activeEntry() {
-            if running.clientId == clientId { return running }
+            if running.clientId == clientId && running.projectId == projectId { return running }
             try close(running, at: now)
         }
-        let entry = TimeEntry(clientId: clientId, startTime: now, note: note)
+        let entry = TimeEntry(clientId: clientId, projectId: projectId, startTime: now, note: note)
         try store.save(entry)
         return entry
     }

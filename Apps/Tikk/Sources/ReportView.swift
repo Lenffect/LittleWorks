@@ -68,6 +68,7 @@ struct ReportView: View {
                     Text("Geen uren in deze periode.").foregroundStyle(.secondary)
                 }
                 ForEach(rows) { row in
+                    VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(row.client.name)
                         Spacer()
@@ -86,6 +87,11 @@ struct ReportView: View {
                             Text(row.income.map { $0.formatted(.currency(code: "EUR").locale(L10n.language.locale)) } ?? "–")
                                 .monospacedDigit().frame(width: 90, alignment: .trailing)
                         }
+                    }
+                    ForEach(row.projects) { line in projectRow(line) }
+                    if !row.projects.isEmpty, row.unassignedSeconds > 0 {
+                        subRow(Text("Algemeen werk"), seconds: row.unassignedSeconds, detail: "", income: nil, over: false)
+                    }
                     }
                 }
             }
@@ -133,6 +139,37 @@ struct ReportView: View {
             default: Text("\(selectedClients.count) klanten")
             }
         }
+    }
+
+    private func projectRow(_ line: ProjectLine) -> some View {
+        let stats = line.stats
+        var parts: [String] = []
+        if let progress = stats.progress, let est = line.project.estimatedHours {
+            parts.append(tr("%lld%% van %@ u", Int(progress * 100), est.formatted(.number.locale(L10n.language.locale))))
+        }
+        if showIncome, line.project.kind == .fixed, let r = stats.effectiveRate {
+            parts.append(tr("%@/u effectief", r.formatted(.currency(code: "EUR").locale(L10n.language.locale))))
+            parts.append(tr("%@ u totaal", Format.short(line.totalSeconds)))
+        }
+        return subRow(Text(verbatim: line.project.name), seconds: line.seconds, detail: parts.joined(separator: " · "),
+                      income: line.income, over: (stats.progress ?? 0) > 1)
+    }
+
+    private func subRow(_ name: Text, seconds: TimeInterval, detail: String, income: Decimal?, over: Bool) -> some View {
+        HStack {
+            Text("↳").foregroundStyle(.secondary)
+            name
+            Spacer()
+            Text(detail).font(.caption).foregroundStyle(over ? Color.red : Color.secondary)
+            Text(Format.short(seconds)).monospacedDigit().foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .trailing)
+            if showIncome {
+                Text(income.map { $0.formatted(.currency(code: "EUR").locale(L10n.language.locale)) } ?? "")
+                    .monospacedDigit().foregroundStyle(.secondary).frame(width: 90, alignment: .trailing)
+            }
+        }
+        .font(.callout)
+        .padding(.leading, 16)
     }
 
     private var periodLabel: String {

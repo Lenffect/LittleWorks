@@ -6,6 +6,7 @@ struct ClientsView: View {
     let model: AppModel
     @State private var newClient = ""
     @State private var deleting: Client?
+    @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
 
     var body: some View {
         let _ = model.dataVersion   // refresh when data changes
@@ -36,6 +37,9 @@ struct ClientsView: View {
                         if let fee = client.monthlyFee, fee > 0 {
                             Text(effectiveRate(fee: fee, seconds: month[client.id] ?? 0))
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if projectsEnabled {
+                            ClientProjects(model: model, client: client)
                         }
                     }
                 }

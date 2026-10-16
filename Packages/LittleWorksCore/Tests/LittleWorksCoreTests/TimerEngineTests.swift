@@ -29,6 +29,45 @@ struct TimerEngineTests {
         #expect(try engine.activeEntry()?.clientId == a)
     }
 
+    @Test func startStoresProject() throws {
+        let (engine, _, _) = makeEngine()
+        let p = UUID()
+        let entry = try engine.start(clientId: a, projectId: p)
+        #expect(entry.projectId == p)
+        #expect(try engine.activeEntry()?.projectId == p)
+    }
+
+    @Test func startingSameClientAndProjectKeepsRunningEntry() throws {
+        let (engine, store, time) = makeEngine()
+        let p = UUID()
+        let first = try engine.start(clientId: a, projectId: p)
+        time.advance(60)
+        let again = try engine.start(clientId: a, projectId: p)
+        #expect(again.id == first.id)
+        #expect(try store.entries(in: DateInterval(start: .distantPast, end: .distantFuture)).count == 1)
+    }
+
+    @Test func switchingProjectOfSameClientStartsNewEntryWithoutGap() throws {
+        let (engine, store, time) = makeEngine()
+        let p1 = UUID(), p2 = UUID()
+        let first = try engine.start(clientId: a, projectId: p1)
+        time.advance(600)
+        let second = try engine.start(clientId: a, projectId: p2)
+        let all = try store.entries(in: DateInterval(start: .distantPast, end: .distantFuture))
+        #expect(all.count == 2)
+        let closed = all.first { $0.id == first.id }
+        #expect(closed?.endTime == second.startTime)
+        #expect(try engine.activeEntry()?.projectId == p2)
+    }
+
+    @Test func switchingFromProjectToNoProjectStartsNewEntry() throws {
+        let (engine, _, time) = makeEngine()
+        try engine.start(clientId: a, projectId: UUID())
+        time.advance(60)
+        let entry = try engine.start(clientId: a)
+        #expect(entry.projectId == nil)
+    }
+
     @Test func stopClosesEntryWithExactDuration() throws {
         let (engine, _, time) = makeEngine()
         try engine.start(clientId: a)

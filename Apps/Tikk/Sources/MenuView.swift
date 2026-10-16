@@ -10,6 +10,8 @@ struct MenuView: View {
     @AppStorage(SettingsKey.animations) private var animations = true
     @FocusState private var newClientFocused: Bool
     @State private var newClient = ""
+    @State private var expandedClient: UUID?
+    @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
 
     /// Fixed size, also for the note prompt, so the popover never resizes or jumps.
     static let size = CGSize(width: 300, height: 440)
@@ -36,13 +38,33 @@ struct MenuView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
+                    let _ = model.dataVersion   // refresh when projects change
+                    let projects = projectsEnabled ? model.allProjects.filter { !$0.isArchived } : []
                     ForEach(model.clients) { client in
+                        let clientProjects = projects.filter { $0.clientId == client.id }
+                        let running = model.active?.clientId == client.id
                         ClientRow(
                             client: client,
-                            isRunning: model.active?.clientId == client.id,
+                            isRunning: running,
                             today: model.todayByClient[client.id] ?? 0,
-                            animated: animations
-                        ) { model.toggle(client) }
+                            animated: animations,
+                            projects: clientProjects,
+                            runningProjectId: running ? model.active?.projectId : nil,
+                            expanded: expandedClient == client.id,
+                            onToggleExpand: { expandedClient = expandedClient == client.id ? nil : client.id },
+                            onPick: { project in
+                                model.start(client, project: project)
+                                expandedClient = nil
+                            }
+                        ) {
+                            if running {
+                                model.stop()
+                            } else if clientProjects.isEmpty {
+                                model.toggle(client)
+                            } else {
+                                expandedClient = expandedClient == client.id ? nil : client.id
+                            }
+                        }
                         .contextMenu { Button("Archiveren") { model.archive(client) } }
                     }
                 }
@@ -94,7 +116,8 @@ struct MenuView: View {
             TikkFigure(pose: pose, scale: 3)
             if let c = model.activeClient {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.name).font(.headline).lineLimit(1)
+                    Text(projectsEnabled && model.activeProject != nil ? "\(c.name) · \(model.activeProject!.name)" : c.name)
+                        .font(.headline).lineLimit(1)
                     Text(Format.duration(model.activeElapsed)).monospacedDigit().font(.title2.weight(.semibold))
                 }
                 Spacer()
@@ -135,21 +158,42 @@ struct MenuView: View {
 }
 
 /// One client row: the whole row is clickable, and highlights on hover to show that.
+/// A client with projects gets a chevron that lists "No project" plus its projects.
 private struct ClientRow: View {
     let client: Client
     let isRunning: Bool
     let today: TimeInterval
     let animated: Bool
+    let projects: [Project]
+    let runningProjectId: UUID?
+    let expanded: Bool
+    let onToggleExpand: () -> Void
+    let onPick: (Project?) -> Void
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: isRunning ? "stop.circle.fill" : "play.circle").font(.title2)
-                Text(client.name).font(.title3).lineLimit(1)
-                Spacer()
-                Text(Format.short(today)).monospacedDigit().foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 0) {
+                Button(action: action) {
+                    HStack {
+                        Image(systemName: isRunning ? "stop.circle.fill" : "play.circle").font(.title2)
+                        Text(client.name).font(.title3).lineLimit(1)
+                        Spacer()
+                        Text(Format.short(today)).monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if !projects.isEmpty {
+                    Button(action: onToggleExpand) {
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                            .foregroundStyle(.secondary).padding(.leading, 8)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Projecten"))
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
@@ -157,10 +201,30 @@ private struct ClientRow: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.primary.opacity(hovering ? 0.10 : (isRunning ? 0.06 : 0)))
             )
+            .onHover { hovering = $0 }
+            .animation(animated ? .easeOut(duration: 0.12) : nil, value: hovering)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(projects) { pick($0, title: LocalizedStringKey($0.name)) }
+                    pick(nil, title: "Algemeen werk")
+                }
+                .padding(.leading, 34)
+            }
+        }
+    }
+
+    private func pick(_ project: Project?, title: LocalizedStringKey) -> some View {
+        let current = isRunning && runningProjectId == project?.id
+        return Button { onPick(project) } label: {
+            HStack {
+                Image(systemName: "checkmark").opacity(current ? 1 : 0).font(.caption)
+                if let project { Text(verbatim: project.name) } else { Text(title).foregroundStyle(.secondary) }
+                Spacer()
+            }
+            .padding(.vertical, 3)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .animation(animated ? .easeOut(duration: 0.12) : nil, value: hovering)
     }
 }

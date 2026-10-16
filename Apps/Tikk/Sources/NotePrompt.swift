@@ -11,7 +11,9 @@ struct NotePrompt: View {
     init(model: AppModel, entry: TimeEntry) {
         self.model = model
         self.entry = entry
-        _note = State(initialValue: entry.note ?? "")
+        // A project adds "Name:" automatically; continue typing after it.
+        let existing = entry.note ?? ""
+        _note = State(initialValue: existing.hasSuffix(":") ? existing + " " : existing)
     }
 
     private var clientName: String {

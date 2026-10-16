@@ -15,6 +15,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.autoBackupPath) private var backupPath = SettingsKey.defaultBackupPath
 
     @AppStorage(SettingsKey.language) private var language = AppLanguage.en.rawValue
+    @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
+    @AppStorage(SettingsKey.budgetAlerts) private var budgetAlerts = true
     @State private var notificationStatus = ""
     @AppStorage(ReminderSettings.enabledKey) private var remind = false
     @AppStorage(ReminderSettings.firstKey) private var remindFirst = ReminderSettings.defaultFirst
@@ -33,6 +35,15 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
                 .disabled(!show)
+            }
+
+            Section("Projecten") {
+                Toggle("Projecten gebruiken", isOn: $projectsEnabled)
+                Text("Werk per klant met projecten: vaste prijs of uurtarief, geschatte uren en effectief tarief per project. Uit = tikk. werkt zoals voorheen. Je projecten blijven bewaard.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle("Waarschuw bij 80% en 100% van de geschatte uren", isOn: $budgetAlerts)
+                    .disabled(!projectsEnabled)
+                    .onChange(of: budgetAlerts) { if budgetAlerts { NotificationService.shared.requestPermission() } }
             }
 
             Section("Herinnering") {

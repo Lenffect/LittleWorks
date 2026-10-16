@@ -5,6 +5,7 @@ struct DayRow: Identifiable {
     let id = UUID()
     let entryId: UUID
     let clientName: String
+    var projectName: String? = nil
     let note: String?
     let start: Date
     let end: Date
@@ -23,6 +24,7 @@ struct OverviewView: View {
     let model: AppModel
     let onEdit: (UUID) -> Void
     @State private var days: [DayGroup] = []
+    @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
 
     /// Changes every minute and whenever the timer or clients change, to refresh the list.
     private var refreshKey: String {
@@ -53,7 +55,7 @@ struct OverviewView: View {
                             ForEach(group.rows) { row in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(row.clientName).font(.body)
+                                        Text(projectsEnabled && row.projectName != nil ? "\(row.clientName) · \(row.projectName!)" : row.clientName).font(.body)
                                         if let n = row.note { Text(n).font(.caption).foregroundStyle(.secondary) }
                                     }
                                     if row.isRunning { Text("● loopt").foregroundStyle(.orange).font(.caption) }

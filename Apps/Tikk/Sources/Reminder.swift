@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -52,8 +53,39 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate, @un
         content.sound = .default
         content.categoryIdentifier = Self.category
         content.userInfo = ["entryId": entryId.uuidString]
+        Self.attach(.master, to: content)
         UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: "tikk-reminder", content: content, trigger: nil))
+    }
+
+    /// Adds a Tikk pose as the notification image (the app icon alone can show up blank for unsigned builds).
+    private static func attach(_ pose: TikkPose, to content: UNMutableNotificationContent) {
+        let side = 256
+        guard let source = NSImage(named: pose.rawValue),
+              let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8, samplesPerPixel: 4,
+                hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let context = NSGraphicsContext(bitmapImageRep: rep) else { return }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        context.imageInterpolation = .none
+        source.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("tikk-\(UUID().uuidString).png")
+        guard (try? png.write(to: url)) != nil,
+              let attachment = try? UNNotificationAttachment(identifier: "pose", url: url) else { return }
+        content.attachments = [attachment]
+    }
+
+    /// Plain notification without actions, for project budget warnings.
+    func sendAlert(title: String, body: String, id: String, pose: TikkPose = .master) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        Self.attach(pose, to: content)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
 
     // Show banners even though tikk is the active app.

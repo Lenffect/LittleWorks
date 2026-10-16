@@ -44,7 +44,7 @@ final class AppModel {
     init() {
         do {
             container = try ModelContainer(
-                for: ClientRecord.self, EntryRecord.self,
+                for: ClientRecord.self, EntryRecord.self, ProjectRecord.self,
                 configurations: ModelConfiguration("Tikk"))
         } catch {
             fatalError("Kan database niet openen: \(error)")
@@ -97,6 +97,19 @@ final class AppModel {
         perform { try engine.toggle(clientId: client.id) }
         if previous != nil, active == nil { lastStopped = Date() }
         promptForNote(ifStopped: previous)
+    }
+
+    /// Starts a timer on a client, optionally on one of its projects (switching if one is running).
+    func start(_ client: Client, project: Project?) {
+        let previous = active?.id
+        perform { try engine.start(clientId: client.id, projectId: project?.id, note: project.map { "\($0.name):" }) }
+        if previous != nil, active == nil { lastStopped = Date() }
+        promptForNote(ifStopped: previous)
+    }
+
+    var activeProject: Project? {
+        guard let id = active?.projectId else { return nil }
+        return allProjects.first { $0.id == id }
     }
 
     func stop() {
@@ -153,12 +166,14 @@ final class AppModel {
         let now = Date()
         let names = Dictionary(
             uniqueKeysWithValues: ((try? context.fetch(FetchDescriptor<ClientRecord>())) ?? []).map { ($0.id, $0.name) })
+        let projectNames = Dictionary(uniqueKeysWithValues: allProjects.map { ($0.id, $0.name) })
         let entries = (try? store.entries(in: DateInterval(start: .distantPast, end: .distantFuture))) ?? []
         var byDay: [Date: [DayRow]] = [:]
         for entry in entries {
             for seg in Totals.segments(of: entry, now: now, calendar: cal) {
                 byDay[seg.day, default: []].append(DayRow(
-                    entryId: entry.id, clientName: names[entry.clientId] ?? tr("Onbekend"), note: entry.note,
+                    entryId: entry.id, clientName: names[entry.clientId] ?? tr("Onbekend"),
+                    projectName: entry.projectId.flatMap { projectNames[$0] }, note: entry.note,
                     start: seg.start, end: seg.end, isRunning: entry.isActive && seg.end == now))
             }
         }
@@ -272,6 +287,9 @@ final class AppModel {
             for e in try context.fetch(FetchDescriptor<EntryRecord>(predicate: #Predicate { $0.clientId == id })) {
                 context.delete(e)
             }
+            for p in try context.fetch(FetchDescriptor<ProjectRecord>(predicate: #Predicate { $0.clientId == id })) {
+                context.delete(p)
+            }
             for c in try context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == id })) {
                 context.delete(c)
             }
@@ -282,6 +300,54 @@ final class AppModel {
         if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == clientId })).first {
             r.hourlyRate = rate
             perform {}
+        }
+    }
+
+    // MARK: - Projects
+
+    var allProjects: [Project] {
+        ((try? context.fetch(FetchDescriptor<ProjectRecord>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []).map(\.value)
+    }
+
+    /// Total seconds per project, all time.
+    func projectSeconds() -> [UUID: TimeInterval] {
+        let entries = (try? store.entries(in: DateInterval(start: .distantPast, end: .distantFuture))) ?? []
+        return Totals.secondsPerProject(entries: entries, in: DateInterval(start: .distantPast, end: .distantFuture), now: now)
+    }
+
+    @discardableResult
+    func addProject(clientId: UUID, name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        if let existing = allProjects.first(where: {
+            $0.clientId == clientId && $0.name.compare(trimmed, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }) {
+            errorMessage = tr("Er is al een project met de naam \"%@\".", existing.name)
+            return false
+        }
+        errorMessage = nil
+        perform { context.insert(ProjectRecord(Project(clientId: clientId, name: trimmed))) }
+        return true
+    }
+
+    func updateProject(_ project: Project) {
+        let id = project.id
+        if let r = try? context.fetch(FetchDescriptor<ProjectRecord>(predicate: #Predicate { $0.id == id })).first {
+            r.apply(project)
+            perform {}
+        }
+    }
+
+    /// Removes the project; its registrations stay with the client, without a project.
+    func deleteProject(_ project: Project) {
+        let id = project.id
+        perform {
+            for e in try context.fetch(FetchDescriptor<EntryRecord>(predicate: #Predicate { $0.projectId == id })) {
+                e.projectId = nil
+            }
+            for p in try context.fetch(FetchDescriptor<ProjectRecord>(predicate: #Predicate { $0.id == id })) {
+                context.delete(p)
+            }
         }
     }
 
@@ -303,11 +369,19 @@ final class AppModel {
     func report(in interval: DateInterval, clientIds: Set<UUID> = []) -> [ReportRow] {
         let entries = (try? store.entries(in: interval)) ?? []
         let seconds = Totals.secondsPerClient(entries: entries, in: interval, now: Date())
+        let withProjects = ProjectsSetting.isEnabled
+        let projectPeriod = withProjects ? Totals.secondsPerProject(entries: entries, in: interval, now: Date()) : [:]
+        let projectTotal = withProjects ? projectSeconds() : [:]
+        let projects = withProjects ? allProjects : []
         return allClients
             .filter { clientIds.isEmpty || clientIds.contains($0.id) }
             .compactMap { c in
                 guard let s = seconds[c.id], s > 0 else { return nil }
-                return ReportRow(client: c, seconds: s, months: Self.wholeMonths(in: interval))
+                let lines = projects.filter { $0.clientId == c.id }.compactMap { p -> ProjectLine? in
+                    guard let ps = projectPeriod[p.id], ps > 0 else { return nil }
+                    return ProjectLine(project: p, seconds: ps, totalSeconds: projectTotal[p.id] ?? ps, clientRate: c.hourlyRate)
+                }
+                return ReportRow(client: c, seconds: s, projects: lines, months: Self.wholeMonths(in: interval))
             }
             .sorted { $0.seconds > $1.seconds }
     }
@@ -324,12 +398,14 @@ final class AppModel {
     func exportEntries(in interval: DateInterval, clientIds: Set<UUID> = []) -> [ExportEntry] {
         let now = Date()
         let clients = Dictionary(uniqueKeysWithValues: allClients.map { ($0.id, $0) })
+        let projectsById = Dictionary(uniqueKeysWithValues: allProjects.map { ($0.id, $0) })
         return ((try? store.entries(in: interval)) ?? []).compactMap { e in
             guard let client = clients[e.clientId], clientIds.isEmpty || clientIds.contains(e.clientId) else { return nil }
             let start = max(e.startTime, interval.start)
             let end = min(e.endTime ?? now, interval.end)
             guard end > start else { return nil }
-            return ExportEntry(client: client, start: start, end: end, isRunning: e.isActive, note: e.note)
+            return ExportEntry(client: client, project: e.projectId.flatMap { projectsById[$0] },
+                               start: start, end: end, isRunning: e.isActive, note: e.note)
         }
     }
 
@@ -394,6 +470,40 @@ final class AppModel {
         }
     }
 
+    private var budgetEntryId: UUID?
+    private var budgetProject: Project?
+    private var budgetTotal: TimeInterval = 0
+    private var budgetLoadedAt = Date.distantPast
+
+    /// Warns once at 80% and once at 100% of a project's estimated hours while its timer runs.
+    private func checkBudget() {
+        guard ProjectsSetting.isEnabled, BudgetAlertSetting.isEnabled,
+              let entry = active, let projectId = entry.projectId else { budgetEntryId = nil; return }
+        if budgetEntryId != entry.id || now.timeIntervalSince(budgetLoadedAt) > 30 {
+            budgetEntryId = entry.id
+            budgetLoadedAt = now
+            budgetProject = allProjects.first { $0.id == projectId }
+            budgetTotal = projectSeconds()[projectId] ?? 0
+        }
+        guard let project = budgetProject, let estimate = project.estimatedHours, estimate > 0 else { return }
+        let hours = (budgetTotal + now.timeIntervalSince(budgetLoadedAt)) / 3600
+        guard let level = ProjectMath.alertLevel(progress: hours / estimate) else { return }
+
+        let key = "budgetAlert-\(projectId)-\(estimate)"
+        guard level > UserDefaults.standard.integer(forKey: key) else { return }
+        UserDefaults.standard.set(level, forKey: key)
+        let est = estimate.formatted(.number.locale(L10n.language.locale))
+        if level >= 100 {
+            NotificationService.shared.sendAlert(
+                title: tr("Project %@: schatting bereikt", project.name),
+                body: tr("Je hebt de geschatte %@ uur gebruikt.", est), id: key, pose: .oeps)
+        } else {
+            NotificationService.shared.sendAlert(
+                title: tr("Project %@: 80%% van de schatting", project.name),
+                body: tr("Nog %@ uur van de geschatte %@ uur.", Format.short(max(0, estimate * 3600 - budgetTotal - now.timeIntervalSince(budgetLoadedAt))), est), id: key)
+        }
+    }
+
     func sendTestReminder() {
         NotificationService.shared.send(
             clientName: activeClient?.name ?? tr("een klant"), elapsed: activeElapsed, entryId: active?.id ?? UUID())
@@ -404,6 +514,7 @@ final class AppModel {
         now = Date()
         menuIcon.sync(tracking: active != nil)
         checkReminder()
+        checkBudget()
         if active != nil {
             UserDefaults.standard.set(now, forKey: Self.lastSeenKey)
             if Int(now.timeIntervalSince1970) % 60 == 0 { reload() }
@@ -463,12 +574,36 @@ enum Format {
     }
 }
 
+/// One project inside a client's report row.
+struct ProjectLine: Identifiable {
+    let project: Project
+    let seconds: TimeInterval        // in the report period
+    let totalSeconds: TimeInterval   // all time, for progress and effective rate of fixed prices
+    let clientRate: Decimal?
+    var id: UUID { project.id }
+    /// All-time figures: progress against the estimate and the effective rate of a fixed price.
+    var stats: ProjectStats { ProjectMath.stats(for: project, clientRate: clientRate, seconds: totalSeconds) }
+    /// Expected income in the period (hourly projects only).
+    var income: Decimal? {
+        guard project.kind == .hourly else { return nil }
+        return (project.price ?? clientRate).map { $0 * Decimal(seconds / 3600) }
+    }
+}
+
 struct ReportRow: Identifiable {
     let client: Client
     let seconds: TimeInterval
     var id: UUID { client.id }
     var hours: Double { seconds / 3600 }
-    var income: Decimal? { client.hourlyRate.map { $0 * Decimal(hours) } }
+    /// Projects worked on in the period; empty when projects are off or unused.
+    var projects: [ProjectLine] = []
+    var unassignedSeconds: TimeInterval { seconds - projects.reduce(0) { $0 + $1.seconds } }
+    var income: Decimal? {
+        if projects.isEmpty { return client.hourlyRate.map { $0 * Decimal(hours) } }
+        return ProjectMath.expectedIncome(
+            clientRate: client.hourlyRate, clientSeconds: seconds,
+            projects: projects.map { ($0.project, $0.seconds) })
+    }
     /// Months covered by the period when it is made of whole calendar months.
     var months: Int? = nil
     /// Fixed fee divided by hours worked; needs a monthly fee and a whole-month period.

@@ -165,6 +165,7 @@ enum XLSX {
 
 struct ExportEntry {
     let client: Client
+    var project: Project? = nil
     let start: Date
     let end: Date
     let isRunning: Bool
@@ -191,7 +192,8 @@ enum ReportExport {
     }
 
     private static func registrations(_ entries: [ExportEntry], includeIncome: Bool) -> XSheet {
-        var header: [XCell] = ["Datum", "Klant", "Start", "Eind", "Uren", "Notitie"].map { .bold(tr($0)) }
+        let withProject = ProjectsSetting.isEnabled
+        var header: [XCell] = (["Datum", "Klant"] + (withProject ? ["Project"] : []) + ["Start", "Eind", "Uren", "Notitie"]).map { .bold(tr($0)) }
         if includeIncome { header += [.bold(tr("Uurloon")), .bold(tr("Bedrag"))] }
         var rows = [header]
         var totalHours = 0.0
@@ -199,13 +201,17 @@ enum ReportExport {
         for e in entries {
             let hours = e.seconds / 3600
             totalHours += hours
-            var row: [XCell] = [
-                .date(e.start), .text(e.client.name), .time(e.start),
+            var row: [XCell] = [.date(e.start), .text(e.client.name)]
+            if withProject { row.append(.text(e.project?.name ?? tr("Algemeen werk"))) }
+            row += [
+                .time(e.start),
                 e.isRunning ? .text(tr("loopt")) : .time(e.end),
                 .hours(hours), .text(e.note ?? ""),
             ]
             if includeIncome {
-                if let rate = e.client.hourlyRate {
+                // Fixed-price projects have no per-hour amount; hourly projects use their own rate if set.
+                let rate: Decimal? = e.project?.kind == .fixed ? nil : (e.project?.price ?? e.client.hourlyRate)
+                if let rate {
                     let amount = rate * Decimal(hours)
                     totalMoney += amount
                     row += [.money(rate), .money(amount)]
@@ -214,11 +220,13 @@ enum ReportExport {
             rows.append(row)
         }
         var total: [XCell] = [.bold(tr("Totaal")), .empty, .empty, .empty, .boldHours(totalHours), .empty]
+        if withProject { total.insert(.empty, at: 2) }
         if includeIncome { total += [.empty, .boldMoney(totalMoney)] }
         rows += [[], total]
-        return XSheet(name: tr("Registraties"),
-                      widths: includeIncome ? [12, 22, 9, 9, 9, 50, 11, 12] : [12, 22, 9, 9, 9, 50],
-                      rows: rows)
+        var widths: [Double] = [12, 22, 9, 9, 9, 50]
+        if withProject { widths.insert(20, at: 2) }
+        if includeIncome { widths += [11, 12] }
+        return XSheet(name: tr("Registraties"), widths: widths, rows: rows)
     }
 
     private static func summarySheet(_ summary: [ReportRow], interval: DateInterval, includeIncome: Bool) -> XSheet {
@@ -237,13 +245,29 @@ enum ReportExport {
             totalHours += r.hours
             var row: [XCell] = [.text(r.client.name), .hours(r.hours)]
             if includeIncome {
-                if let rate = r.client.hourlyRate, let income = r.income {
+                if let income = r.income {
                     totalMoney += income
-                    row += [.money(rate), .money(income)]
+                    row += [r.client.hourlyRate.map { .money($0) } ?? .empty, .money(income)]
                 } else { row += [.empty, .empty] }
                 row.append(r.effectiveRate.map { .money($0) } ?? .empty)
             }
             rows.append(row)
+            if !r.projects.isEmpty {
+                for line in r.projects {
+                    var sub: [XCell] = [.text("   ↳ " + line.project.name), .hours(line.seconds / 3600)]
+                    if includeIncome {
+                        sub += [line.project.kind == .hourly ? (line.project.price ?? r.client.hourlyRate).map { .money($0) } ?? .empty : .empty,
+                                line.income.map { .money($0) } ?? .empty,
+                                line.project.kind == .fixed ? (line.stats.effectiveRate.map { .money($0) } ?? .empty) : .empty]
+                    }
+                    rows.append(sub)
+                }
+                if r.unassignedSeconds > 0 {
+                    var sub: [XCell] = [.text("   ↳ " + tr("Algemeen werk")), .hours(r.unassignedSeconds / 3600)]
+                    if includeIncome { sub += [.empty, .empty, .empty] }
+                    rows.append(sub)
+                }
+            }
         }
         var total: [XCell] = [.bold(tr("Totaal")), .boldHours(totalHours)]
         if includeIncome { total += [.empty, .boldMoney(totalMoney), .empty] }
