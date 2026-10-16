@@ -46,14 +46,8 @@ struct MenuView: View {
                 .disabled(newClient.trimmingCharacters(in: .whitespaces).isEmpty)
 
             Divider()
-            Button("Overzicht openen") {
-                openWindow(id: "overview")
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            Button("Instellingen…") {
-                openWindow(id: "settings")
-                NSApp.activate(ignoringOtherApps: true)
-            }
+            Button("Overzicht openen") { openInFront("overview", title: WindowTitle.overview, using: openWindow) }
+            Button("Instellingen…") { openInFront("settings", title: WindowTitle.settings, using: openWindow) }
             Button("Back-up maken…") { model.exportBackup() }
             Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
             if let m = model.statusMessage { Text(m).foregroundStyle(.secondary).font(.caption) }
