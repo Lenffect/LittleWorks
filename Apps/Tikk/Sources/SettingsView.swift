@@ -89,6 +89,7 @@ struct SettingsView: View {
 
             Section("Algemeen") {
                 Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
+                Button("Venster terugzetten naar standaard positie en grootte") { PopoverPosition.reset() }
                 Toggle("Start bij inloggen", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
             }
         }

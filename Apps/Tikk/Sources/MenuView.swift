@@ -8,11 +8,12 @@ struct MenuView: View {
 
     enum Screen: Equatable { case main, overview, report, settings, edit(UUID) }
 
-    /// Same size for every screen, so the popover never resizes or jumps.
-    static let size = CGSize(width: 520, height: 480)
-
+    /// Every screen has the same minimum size, so switching screens never resizes the popover.
+    /// The user can drag it bigger; see PopoverPosition.
     var body: some View {
-        content.frame(width: Self.size.width, height: Self.size.height, alignment: .top)
+        content.frame(
+            minWidth: PopoverPosition.minSize.width, maxWidth: .infinity,
+            minHeight: PopoverPosition.minSize.height, maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder private var content: some View {
