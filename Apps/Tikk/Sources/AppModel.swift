@@ -286,6 +286,20 @@ final class AppModel {
         }
     }
 
+    func setMonthlyFee(_ fee: Decimal?, for clientId: UUID) {
+        if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == clientId })).first {
+            r.monthlyFee = fee
+            perform {}
+        }
+    }
+
+    /// Seconds per client in the current calendar month.
+    func monthSeconds() -> [UUID: TimeInterval] {
+        guard let month = Calendar.current.dateInterval(of: .month, for: now) else { return [:] }
+        let e = (try? store.entries(in: month)) ?? []
+        return Totals.secondsPerClient(entries: e, in: month, now: now)
+    }
+
     /// Hours per client in `interval` (archived clients included). Empty `clientIds` means all clients.
     func report(in interval: DateInterval, clientIds: Set<UUID> = []) -> [ReportRow] {
         let entries = (try? store.entries(in: interval)) ?? []

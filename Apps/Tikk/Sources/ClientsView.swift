@@ -11,6 +11,7 @@ struct ClientsView: View {
         let _ = model.dataVersion   // refresh when data changes
         let active = model.allClients.filter { !$0.isArchived }
         let archived = model.archivedClients
+        let month = model.monthSeconds()
         List {
             Section {
                 HStack {
@@ -24,11 +25,18 @@ struct ClientsView: View {
             Section("Actief") {
                 if active.isEmpty { Text("Nog geen klanten.").foregroundStyle(.secondary) }
                 ForEach(active) { client in
-                    HStack {
-                        Text(client.name)
-                        Spacer()
-                        RateField(client: client) { model.setRate($0, for: client.id) }
-                        Button("Archiveer") { model.archive(client) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(client.name)
+                            Spacer()
+                            RateField(client: client) { model.setRate($0, for: client.id) }
+                            FeeField(client: client) { model.setMonthlyFee($0, for: client.id) }
+                            Button("Archiveer") { model.archive(client) }
+                        }
+                        if let fee = client.monthlyFee, fee > 0 {
+                            Text(effectiveRate(fee: fee, seconds: month[client.id] ?? 0))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -47,6 +55,13 @@ struct ClientsView: View {
         .sheet(item: $deleting) { client in
             DeleteClientConfirm(model: model, client: client) { deleting = nil }
         }
+    }
+
+    private func effectiveRate(fee: Decimal, seconds: TimeInterval) -> String {
+        let hours = seconds / 3600
+        guard hours > 0 else { return "Deze maand nog geen uren" }
+        let perHour = NSDecimalNumber(decimal: fee).doubleValue / hours
+        return "Deze maand: \(Format.short(seconds)) u → effectief € \(String(format: "%.2f", perHour))/u"
     }
 
     private func add() {

@@ -5,6 +5,8 @@ public struct Client: Identifiable, Codable, Hashable, Sendable {
     public var name: String
     public var colorHex: String
     public var hourlyRate: Decimal?
+    /// Fixed fee per month; used to show the effective hourly rate.
+    public var monthlyFee: Decimal?
     public var isArchived: Bool
     public var createdAt: Date
 
@@ -13,6 +15,7 @@ public struct Client: Identifiable, Codable, Hashable, Sendable {
         name: String,
         colorHex: String = "#FF8A4C",
         hourlyRate: Decimal? = nil,
+        monthlyFee: Decimal? = nil,
         isArchived: Bool = false,
         createdAt: Date = Date()
     ) {
@@ -20,6 +23,7 @@ public struct Client: Identifiable, Codable, Hashable, Sendable {
         self.name = name
         self.colorHex = colorHex
         self.hourlyRate = hourlyRate
+        self.monthlyFee = monthlyFee
         self.isArchived = isArchived
         self.createdAt = createdAt
     }

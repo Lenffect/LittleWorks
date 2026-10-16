@@ -8,16 +8,17 @@ final class ClientRecord {
     var name: String
     var colorHex: String
     var hourlyRate: Decimal?
+    var monthlyFee: Decimal?
     var isArchived: Bool
     var createdAt: Date
 
     init(_ c: Client) {
         id = c.id; name = c.name; colorHex = c.colorHex
-        hourlyRate = c.hourlyRate; isArchived = c.isArchived; createdAt = c.createdAt
+        hourlyRate = c.hourlyRate; monthlyFee = c.monthlyFee; isArchived = c.isArchived; createdAt = c.createdAt
     }
 
     var value: Client {
-        Client(id: id, name: name, colorHex: colorHex, hourlyRate: hourlyRate,
+        Client(id: id, name: name, colorHex: colorHex, hourlyRate: hourlyRate, monthlyFee: monthlyFee,
                isArchived: isArchived, createdAt: createdAt)
     }
 }
