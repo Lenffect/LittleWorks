@@ -229,7 +229,7 @@ enum ReportExport {
             [],
         ]
         var header: [XCell] = [.bold(tr("Klant")), .bold(tr("Uren"))]
-        if includeIncome { header += [.bold(tr("Uurloon")), .bold(tr("Bedrag"))] }
+        if includeIncome { header += [.bold(tr("Uurloon")), .bold(tr("Bedrag")), .bold(tr("Effectief uurtarief"))] }
         rows.append(header)
         var totalHours = 0.0
         var totalMoney: Decimal = 0
@@ -241,12 +241,13 @@ enum ReportExport {
                     totalMoney += income
                     row += [.money(rate), .money(income)]
                 } else { row += [.empty, .empty] }
+                row.append(r.effectiveRate.map { .money($0) } ?? .empty)
             }
             rows.append(row)
         }
         var total: [XCell] = [.bold(tr("Totaal")), .boldHours(totalHours)]
-        if includeIncome { total += [.empty, .boldMoney(totalMoney)] }
+        if includeIncome { total += [.empty, .boldMoney(totalMoney), .empty] }
         rows += [[], total]
-        return XSheet(name: tr("Samenvatting"), widths: [28, 12, 12, 14], rows: rows)
+        return XSheet(name: tr("Samenvatting"), widths: [28, 12, 12, 14, 18], rows: rows)
     }
 }

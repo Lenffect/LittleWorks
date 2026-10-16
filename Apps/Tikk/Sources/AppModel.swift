@@ -307,9 +307,17 @@ final class AppModel {
             .filter { clientIds.isEmpty || clientIds.contains($0.id) }
             .compactMap { c in
                 guard let s = seconds[c.id], s > 0 else { return nil }
-                return ReportRow(client: c, seconds: s)
+                return ReportRow(client: c, seconds: s, months: Self.wholeMonths(in: interval))
             }
             .sorted { $0.seconds > $1.seconds }
+    }
+
+    /// Number of calendar months when `interval` runs exactly from a month start to a month start, else nil.
+    static func wholeMonths(in interval: DateInterval, calendar cal: Calendar = .current) -> Int? {
+        func isMonthStart(_ d: Date) -> Bool { cal.dateComponents([.day, .hour, .minute, .second], from: d) == DateComponents(day: 1, hour: 0, minute: 0, second: 0) }
+        guard isMonthStart(interval.start), isMonthStart(interval.end),
+              let n = cal.dateComponents([.month], from: interval.start, to: interval.end).month, n > 0 else { return nil }
+        return n
     }
 
     /// Every registration in the period, clipped at the period edges, for the Excel export.
@@ -461,4 +469,11 @@ struct ReportRow: Identifiable {
     var id: UUID { client.id }
     var hours: Double { seconds / 3600 }
     var income: Decimal? { client.hourlyRate.map { $0 * Decimal(hours) } }
+    /// Months covered by the period when it is made of whole calendar months.
+    var months: Int? = nil
+    /// Fixed fee divided by hours worked; needs a monthly fee and a whole-month period.
+    var effectiveRate: Decimal? {
+        guard let fee = client.monthlyFee, fee > 0, let months, hours > 0 else { return nil }
+        return fee * Decimal(months) / Decimal(hours)
+    }
 }

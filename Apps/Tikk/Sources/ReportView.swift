@@ -81,6 +81,8 @@ struct ReportView: View {
                         }
                         .frame(width: 70, alignment: .trailing)
                         if showIncome {
+                            Text(row.effectiveRate.map { tr("%@/u effectief", $0.formatted(.currency(code: "EUR").locale(L10n.language.locale))) } ?? "")
+                                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                             Text(row.income.map { $0.formatted(.currency(code: "EUR").locale(L10n.language.locale)) } ?? "–")
                                 .monospacedDigit().frame(width: 90, alignment: .trailing)
                         }
