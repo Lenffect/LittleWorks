@@ -187,6 +187,26 @@ final class AppModel {
         }
     }
 
+    /// Number of registrations and total seconds that belong to a client.
+    func usage(of clientId: UUID) -> (count: Int, seconds: TimeInterval) {
+        let all = (try? context.fetch(FetchDescriptor<EntryRecord>(predicate: #Predicate { $0.clientId == clientId }))) ?? []
+        return (all.count, all.reduce(0) { $0 + $1.value.duration(at: Date()) })
+    }
+
+    /// Irreversibly deletes an archived client together with all its registrations.
+    func deleteClientPermanently(_ client: Client) {
+        guard client.isArchived else { return }
+        let id = client.id
+        perform {
+            for e in try context.fetch(FetchDescriptor<EntryRecord>(predicate: #Predicate { $0.clientId == id })) {
+                context.delete(e)
+            }
+            for c in try context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == id })) {
+                context.delete(c)
+            }
+        }
+    }
+
     func setRate(_ rate: Decimal?, for clientId: UUID) {
         if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == clientId })).first {
             r.hourlyRate = rate
