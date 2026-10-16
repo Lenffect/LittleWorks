@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import ServiceManagement
 import SwiftData
+import UserNotifications
 import LittleWorksCore
 
 @MainActor
@@ -251,6 +252,47 @@ final class AppModel {
         }
     }
 
+    /// Wipes everything: all clients, projects, entries and every setting, so tikk. starts like a fresh install.
+    /// With `saveBackupFirst` a last backup is written to the backup folder; if that fails, nothing is deleted.
+    /// Returns the name of that backup file, if one was made.
+    @discardableResult
+    func factoryReset(saveBackupFirst: Bool) -> String? {
+        var backupName: String?
+        do {
+            if saveBackupFirst {
+                let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)
+                    .timeSeparator(.omitted).dateSeparator(.omitted))
+                let url = AutoBackup.folder.appendingPathComponent("tikk-voor-reset-\(stamp).json")
+                try FileManager.default.createDirectory(at: AutoBackup.folder, withIntermediateDirectories: true)
+                try Backup.data(for: try Backup.snapshot(from: context), format: .json).write(to: url, options: .atomic)
+                backupName = url.lastPathComponent
+            }
+            for e in try context.fetch(FetchDescriptor<EntryRecord>()) { context.delete(e) }
+            for p in try context.fetch(FetchDescriptor<ProjectRecord>()) { context.delete(p) }
+            for c in try context.fetch(FetchDescriptor<ClientRecord>()) { context.delete(c) }
+            try context.save()
+        } catch {
+            errorMessage = tr("Resetten mislukt: %@", error.localizedDescription)
+            reload()
+            return nil
+        }
+
+        try? SMAppService.mainApp.unregister()
+        let center = UNUserNotificationCenter.current()
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+
+        notePromptEntryId = nil
+        lastStopped = nil
+        statusMessage = nil
+        errorMessage = nil
+        reload()
+        NotificationService.shared.setUp()
+        autoBackup()
+        return backupName
+    }
+
     /// Writes the rolling backup file when enabled. Never throws; failures show up in settings.
     func autoBackup() {
         guard AutoBackup.isEnabled else { autoBackupStatus = tr("Automatische back-up staat uit."); return }
@@ -348,6 +390,23 @@ final class AppModel {
             for p in try context.fetch(FetchDescriptor<ProjectRecord>(predicate: #Predicate { $0.id == id })) {
                 context.delete(p)
             }
+        }
+    }
+
+    /// Active projects with hours or an estimate, all-time, most urgent (highest progress) first.
+    func projectStatuses() -> [ProjectStatus] {
+        let clients = Dictionary(uniqueKeysWithValues: allClients.map { ($0.id, $0) })
+        let seconds = projectSeconds()
+        return allProjects.compactMap { p -> ProjectStatus? in
+            guard !p.isArchived, let client = clients[p.clientId], !client.isArchived else { return nil }
+            let s = seconds[p.id] ?? 0
+            guard s > 0 || p.estimatedHours != nil else { return nil }
+            return ProjectStatus(project: p, clientName: client.name,
+                                 stats: ProjectMath.stats(for: p, clientRate: client.hourlyRate, seconds: s))
+        }
+        .sorted {
+            let a = $0.stats.progress ?? -1, b = $1.stats.progress ?? -1
+            return a != b ? a > b : $0.stats.seconds > $1.stats.seconds
         }
     }
 
@@ -572,6 +631,14 @@ enum Format {
         let m = Int(s) / 60
         return String(format: "%d:%02d", m / 60, m % 60)
     }
+}
+
+/// A project's all-time status, for the overview.
+struct ProjectStatus: Identifiable {
+    let project: Project
+    let clientName: String
+    let stats: ProjectStats
+    var id: UUID { project.id }
 }
 
 /// One project inside a client's report row.

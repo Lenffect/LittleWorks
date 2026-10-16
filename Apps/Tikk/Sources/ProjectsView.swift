@@ -1,7 +1,7 @@
 import SwiftUI
 import LittleWorksCore
 
-private func money(_ d: Decimal) -> String {
+func money(_ d: Decimal) -> String {
     d.formatted(.number.precision(.fractionLength(2)).locale(L10n.language.locale))
 }
 

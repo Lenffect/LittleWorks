@@ -175,3 +175,15 @@
 "Je hebt de geschatte %@ uur gebruikt." = "You have used the estimated %@ hours.";
 "Project %@: 80%% van de schatting" = "Project %@: 80%% of the estimate";
 "Nog %@ uur van de geschatte %@ uur." = "%@ hours left of the estimated %@ hours.";
+"%@ van %@ u" = "%@ of %@ h";
+"vast €%@" = "fixed €%@";
+"Resetten mislukt: %@" = "Reset failed: %@";
+"ik weet zeker dat ik de hele app wil resetten en alle gegevens wil verwijderen" = "I am sure I want to reset the entire app and delete all data";
+"Hele app resetten" = "Reset the entire app";
+"Dit verwijdert **definitief** alle klanten, projecten en registraties, en al je instellingen (taal, herinneringen, back-upmap, urencriterium, enzovoort). tikk. start daarna opnieuw op alsof het net is geïnstalleerd, met de introductie. De automatische back-up wordt ook overschreven met de lege situatie. Dit kan niet ongedaan worden gemaakt." = "This **permanently** deletes all clients, projects and entries, and all your settings (language, reminders, backup folder, hours criterion, and so on). tikk. then starts again as if it was just installed, with the introduction. The automatic backup is also overwritten with the empty state. This cannot be undone.";
+"Bewaar eerst een laatste back-up in de back-upmap" = "First save a last backup in the backup folder";
+"Typ de volgende zin om te bevestigen:" = "Type the following sentence to confirm:";
+"Alles verwijderen en resetten" = "Delete everything and reset";
+"Reset" = "Reset";
+"Zet de hele app terug naar het begin: alle gegevens en instellingen worden gewist." = "Return the whole app to the start: all data and settings are erased.";
+"Reset app naar fabrieksinstellingen…" = "Reset app to factory settings…";

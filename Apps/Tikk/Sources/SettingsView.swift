@@ -18,6 +18,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.projectsEnabled) private var projectsEnabled = false
     @AppStorage(SettingsKey.budgetAlerts) private var budgetAlerts = true
     @State private var notificationStatus = ""
+    @State private var showReset = false
     @AppStorage(ReminderSettings.enabledKey) private var remind = false
     @AppStorage(ReminderSettings.firstKey) private var remindFirst = ReminderSettings.defaultFirst
     @AppStorage(ReminderSettings.everyKey) private var remindEvery = ReminderSettings.defaultEvery
@@ -116,9 +117,17 @@ struct SettingsView: View {
                     }
                 }
             }
+
+            Section("Reset") {
+                Text("Zet de hele app terug naar het begin: alle gegevens en instellingen worden gewist.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Reset app naar fabrieksinstellingen…", role: .destructive) { showReset = true }
+                if let e = model.errorMessage { Text(e).font(.caption).foregroundStyle(.red) }
+            }
         }
         .formStyle(.grouped)
         .padding(.top, 12)
+        .sheet(isPresented: $showReset) { ResetAppSheet(model: model) { showReset = false } }
     }
 
     private func setPath(_ path: String) {

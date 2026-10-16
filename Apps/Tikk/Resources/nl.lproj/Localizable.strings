@@ -175,3 +175,15 @@
 "Je hebt de geschatte %@ uur gebruikt." = "Je hebt de geschatte %@ uur gebruikt.";
 "Project %@: 80%% van de schatting" = "Project %@: 80%% van de schatting";
 "Nog %@ uur van de geschatte %@ uur." = "Nog %@ uur van de geschatte %@ uur.";
+"%@ van %@ u" = "%@ van %@ u";
+"vast €%@" = "vast €%@";
+"Resetten mislukt: %@" = "Resetten mislukt: %@";
+"ik weet zeker dat ik de hele app wil resetten en alle gegevens wil verwijderen" = "ik weet zeker dat ik de hele app wil resetten en alle gegevens wil verwijderen";
+"Hele app resetten" = "Hele app resetten";
+"Dit verwijdert **definitief** alle klanten, projecten en registraties, en al je instellingen (taal, herinneringen, back-upmap, urencriterium, enzovoort). tikk. start daarna opnieuw op alsof het net is geïnstalleerd, met de introductie. De automatische back-up wordt ook overschreven met de lege situatie. Dit kan niet ongedaan worden gemaakt." = "Dit verwijdert **definitief** alle klanten, projecten en registraties, en al je instellingen (taal, herinneringen, back-upmap, urencriterium, enzovoort). tikk. start daarna opnieuw op alsof het net is geïnstalleerd, met de introductie. De automatische back-up wordt ook overschreven met de lege situatie. Dit kan niet ongedaan worden gemaakt.";
+"Bewaar eerst een laatste back-up in de back-upmap" = "Bewaar eerst een laatste back-up in de back-upmap";
+"Typ de volgende zin om te bevestigen:" = "Typ de volgende zin om te bevestigen:";
+"Alles verwijderen en resetten" = "Alles verwijderen en resetten";
+"Reset" = "Reset";
+"Zet de hele app terug naar het begin: alle gegevens en instellingen worden gewist." = "Zet de hele app terug naar het begin: alle gegevens en instellingen worden gewist.";
+"Reset app naar fabrieksinstellingen…" = "Reset app naar fabrieksinstellingen…";
