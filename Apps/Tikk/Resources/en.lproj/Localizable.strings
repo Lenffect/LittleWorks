@@ -197,3 +197,16 @@
 
 "Opslaan" = "Save";
 "Naam wijzigen" = "Edit name";
+"Timer" = "Timer";
+"Back-up delen" = "Share backup";
+"Tik op een klant om te starten" = "Tap a client to start";
+
+"Weggeweest" = "Away";
+"Vraag wat te doen met de tijd na lang weggaan" = "Ask what to do with the time after being away a long time";
+"Vraag na %lld min weg" = "Ask after %lld min away";
+"Als de timer liep terwijl tikk. op de achtergrond stond. Zet dit uit als je je telefoon vaak weglegt terwijl je werkt." = "When the timer was running while tikk. was in the background. Turn this off if you often put your phone down while working.";
+"Soort" = "Type";
+"Vast bedrag" = "Fixed amount";
+"Totaalprijs" = "Total price";
+"Uurtarief" = "Hourly rate";
+"Schatting" = "Estimate";

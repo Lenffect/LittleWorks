@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 /// Brand colors (Assets.xcassets): Tikk Orange is the accent, Warm Off-White / Soft Black the surface.
@@ -42,6 +44,7 @@ struct Wordmark: View {
     }
 }
 
+#if os(macOS)
 extension NSImage {
     /// A Tikk pose as a crisp (non-smoothed) image, for places that need an NSImage such as alerts.
     static func tikk(_ pose: TikkPose, points: CGFloat = 64) -> NSImage? {
@@ -55,3 +58,4 @@ extension NSImage {
         return image
     }
 }
+#endif

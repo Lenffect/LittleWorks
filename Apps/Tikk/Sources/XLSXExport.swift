@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import Foundation
 import UniformTypeIdentifiers
 import LittleWorksCore
@@ -104,6 +106,7 @@ enum XLSX {
         }
 
         let tmp = dir.appendingPathComponent("out.xlsx")
+        #if os(macOS)
         let zip = Process()
         zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
         zip.currentDirectoryURL = dir
@@ -113,6 +116,9 @@ enum XLSX {
         guard zip.terminationStatus == 0 else {
             throw NSError(domain: "tikk", code: 1, userInfo: [NSLocalizedDescriptionKey: tr("Zippen mislukt")])
         }
+        #else
+        try ZipWriter.zip(directory: dir, first: "[Content_Types].xml", to: tmp)
+        #endif
         if fm.fileExists(atPath: url.path) { try fm.removeItem(at: url) }
         try fm.copyItem(at: tmp, to: url)
     }
@@ -174,6 +180,23 @@ struct ExportEntry {
 }
 
 enum ReportExport {
+    static func fileName(for interval: DateInterval) -> String {
+        let f = Date.ISO8601FormatStyle().year().month().day()
+        let last = interval.end.addingTimeInterval(-1)
+        return "tikk-rapport-\(interval.start.formatted(f))_\(last.formatted(f)).xlsx"
+    }
+
+    /// Writes the report to a temporary file (used for sharing on iOS).
+    static func writeTemporary(entries: [ExportEntry], summary: [ReportRow], interval: DateInterval, includeIncome: Bool) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName(for: interval))
+        try XLSX.write(sheets: [
+            registrations(entries, includeIncome: includeIncome),
+            summarySheet(summary, interval: interval, includeIncome: includeIncome),
+        ], to: url)
+        return url
+    }
+
+    #if os(macOS)
     @MainActor
     static func save(entries: [ExportEntry], summary: [ReportRow], interval: DateInterval, includeIncome: Bool) throws -> URL? {
         let panel = NSSavePanel()
@@ -190,6 +213,7 @@ enum ReportExport {
         ], to: url)
         return url
     }
+    #endif
 
     private static func registrations(_ entries: [ExportEntry], includeIncome: Bool) -> XSheet {
         let withProject = ProjectsSetting.isEnabled
@@ -275,3 +299,57 @@ enum ReportExport {
         return XSheet(name: tr("Samenvatting"), widths: [28, 12, 12, 14, 18], rows: rows)
     }
 }
+
+#if os(iOS)
+/// Minimal ZIP writer (stored, no compression) for the .xlsx package; iOS has no /usr/bin/zip.
+enum ZipWriter {
+    private static let crcTable: [UInt32] = (0..<256).map { n -> UInt32 in
+        var c = UInt32(n)
+        for _ in 0..<8 { c = c & 1 == 1 ? 0xEDB8_8320 ^ (c >> 1) : c >> 1 }
+        return c
+    }
+
+    private static func crc32(_ data: Data) -> UInt32 {
+        var c: UInt32 = 0xFFFF_FFFF
+        for b in data { c = crcTable[Int((c ^ UInt32(b)) & 0xFF)] ^ (c >> 8) }
+        return c ^ 0xFFFF_FFFF
+    }
+
+    static func zip(directory: URL, first: String, to url: URL) throws {
+        let fm = FileManager.default
+        var paths: [String] = []
+        let base = directory.standardizedFileURL.path
+        if let walker = fm.enumerator(at: directory, includingPropertiesForKeys: [.isRegularFileKey]) {
+            for case let file as URL in walker where (try? file.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true {
+                let rel = String(file.standardizedFileURL.path.dropFirst(base.count + 1))
+                if rel != url.lastPathComponent { paths.append(rel) }
+            }
+        }
+        paths.sort { a, b in a == first ? true : (b == first ? false : a < b) }
+
+        var out = Data()
+        var central = Data()
+        func le<T: FixedWidthInteger>(_ v: T) -> Data { withUnsafeBytes(of: v.littleEndian) { Data($0) } }
+        let dosTime: UInt16 = 0, dosDate: UInt16 = (46 << 9) | (1 << 5) | 1   // 2026-01-01
+
+        for path in paths {
+            let data = try Data(contentsOf: directory.appendingPathComponent(path))
+            let name = Data(path.utf8)
+            let crc = crc32(data)
+            let offset = UInt32(out.count)
+            out += le(UInt32(0x0403_4B50)) + le(UInt16(20)) + le(UInt16(0)) + le(UInt16(0))
+            out += le(dosTime) + le(dosDate) + le(crc) + le(UInt32(data.count)) + le(UInt32(data.count))
+            out += le(UInt16(name.count)) + le(UInt16(0)) + name + data
+            central += le(UInt32(0x0201_4B50)) + le(UInt16(20)) + le(UInt16(20)) + le(UInt16(0)) + le(UInt16(0))
+            central += le(dosTime) + le(dosDate) + le(crc) + le(UInt32(data.count)) + le(UInt32(data.count))
+            central += le(UInt16(name.count)) + le(UInt16(0)) + le(UInt16(0)) + le(UInt16(0)) + le(UInt16(0))
+            central += le(UInt32(0)) + le(offset) + name
+        }
+        let centralOffset = UInt32(out.count)
+        out += central
+        out += le(UInt32(0x0605_4B50)) + le(UInt16(0)) + le(UInt16(0)) + le(UInt16(paths.count)) + le(UInt16(paths.count))
+        out += le(UInt32(central.count)) + le(centralOffset) + le(UInt16(0))
+        try out.write(to: url, options: .atomic)
+    }
+}
+#endif

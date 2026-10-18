@@ -6,3 +6,5 @@ xcuserdata/
 Backups/
 
 __pycache__/
+Info-iOS.plist
+build-ios/

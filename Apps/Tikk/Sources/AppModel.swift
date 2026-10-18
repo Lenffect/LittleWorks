@@ -1,7 +1,9 @@
+#if os(macOS)
 import AppKit
+import ServiceManagement
+#endif
 import Foundation
 import Observation
-import ServiceManagement
 import SwiftData
 import UserNotifications
 import LittleWorksCore
@@ -35,8 +37,10 @@ final class AppModel {
     /// Bumped on every reload, so screens can refresh when data changed.
     private(set) var dataVersion = 0
 
+    #if os(macOS)
     /// Drives the menu-bar icon (idle / tracking animation).
     let menuIcon = MenuBarIcon()
+    #endif
     /// When the timer was last stopped by the user (shows Tikk's "klaar" pose for a few seconds).
     private(set) var lastStopped: Date?
 
@@ -57,7 +61,9 @@ final class AppModel {
         reload()
         let awaySince = pendingCrashRecovery()
         autoBackup()
+        #if os(macOS)
         observeSleep()
+        #endif
         NotificationService.shared.setUp()
         NotificationService.shared.onStop = { [weak self] id in
             if self?.active?.id == id { self?.stop() }
@@ -65,13 +71,43 @@ final class AppModel {
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        #if os(macOS)
         // Ask after launch has finished, otherwise the alert can end up hidden or block startup.
         if let awaySince {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                 MainActor.assumeIsolated { self?.askAway(since: awaySince, reason: tr("tikk. was niet actief"), asleep: false) }
             }
         }
+        #else
+        // On iOS the timer is wall-clock based; the prompt only asks what to do with long stretches in the background.
+        if let awaySince, AwaySetting.isEnabled, Date().timeIntervalSince(awaySince) > AwaySetting.threshold {
+            awayPrompt = AwayPrompt(since: awaySince)
+        }
+        #endif
     }
+
+    #if os(iOS)
+    struct AwayPrompt: Equatable { let since: Date }
+    /// Set when the app comes back after a long time away while a timer was running.
+    private(set) var awayPrompt: AwayPrompt?
+    private var backgroundedAt: Date?
+
+    func didEnterBackground() { backgroundedAt = Date() }
+
+    func didBecomeActive() {
+        defer { backgroundedAt = nil }
+        guard AwaySetting.isEnabled, active != nil, let left = backgroundedAt,
+              Date().timeIntervalSince(left) > AwaySetting.threshold else { return }
+        awayPrompt = AwayPrompt(since: max(left, active?.startTime ?? left))
+    }
+
+    /// Stops at the moment of leaving, or keeps the time.
+    func resolveAway(stopAtLeave: Bool) {
+        guard let prompt = awayPrompt else { return }
+        awayPrompt = nil
+        if stopAtLeave { perform { try engine.stop(at: prompt.since) } }
+    }
+    #endif
 
     // MARK: - Derived
 
@@ -80,6 +116,7 @@ final class AppModel {
     var todayTotal: TimeInterval { todayByClient.values.reduce(0, +) }
     var weekTotal: TimeInterval { weekByClient.values.reduce(0, +) }
 
+    #if os(macOS)
     var launchAtLogin: Bool {
         get { SMAppService.mainApp.status == .enabled }
         set {
@@ -88,6 +125,7 @@ final class AppModel {
             } catch { errorMessage = tr("Opstarten bij inloggen mislukt: %@", error.localizedDescription) }
         }
     }
+    #endif
 
     // MARK: - Actions
 
@@ -184,6 +222,12 @@ final class AppModel {
         reload()
     }
 
+    /// Remembers a complete manual order of the active clients.
+    func setClientOrder(_ ids: [UUID]) {
+        UserDefaults.standard.set(ids.map(\.uuidString), forKey: Self.clientOrderKey)
+        reload()
+    }
+
     func archive(_ client: Client) {
         if let r = try? context.fetch(FetchDescriptor<ClientRecord>(predicate: #Predicate { $0.id == client.id })).first {
             if active?.clientId == client.id { stop() }
@@ -237,6 +281,7 @@ final class AppModel {
 
     func deleteEntry(id: UUID) { perform { try store.deleteEntry(id: id) } }
 
+    #if os(macOS)
     func exportBackup() {
         do {
             if let url = try Backup.export(from: context) { statusMessage = tr("Back-up opgeslagen: %@", url.lastPathComponent) }
@@ -283,6 +328,33 @@ final class AppModel {
         }
     }
 
+    #endif
+
+    #if os(iOS)
+    /// Replaces all data with the contents of a backup file (used to bring Mac data onto the phone).
+    func restoreBackup(from url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let file = try Backup.read(from: url)
+            try Backup.replaceAll(in: context, with: file)
+            reload()
+            statusMessage = tr("Back-up teruggezet.")
+        } catch {
+            errorMessage = tr("Terugzetten mislukt: %@", error.localizedDescription)
+            reload()
+        }
+    }
+
+    /// Writes the current data to a temporary JSON file that can be shared.
+    func backupFileForSharing() -> URL? {
+        guard let file = try? Backup.snapshot(from: context) else { return nil }
+        let day = Date.now.formatted(.iso8601.year().month().day())
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("tikk-backup-\(day).json")
+        return (try? Backup.data(for: file, format: .json).write(to: url, options: .atomic)).map { url }
+    }
+    #endif
+
     /// Wipes everything: all clients, projects, entries and every setting, so tikk. starts like a fresh install.
     /// With `saveBackupFirst` a last backup is written to the backup folder; if that fails, nothing is deleted.
     /// Returns the name of that backup file, if one was made.
@@ -308,7 +380,9 @@ final class AppModel {
             return nil
         }
 
+        #if os(macOS)
         try? SMAppService.mainApp.unregister()
+        #endif
         let center = UNUserNotificationCenter.current()
         center.removeAllPendingNotificationRequests()
         center.removeAllDeliveredNotifications()
@@ -499,6 +573,7 @@ final class AppModel {
         }
     }
 
+    #if os(macOS)
     func exportReport(interval: DateInterval, clientIds: Set<UUID>, includeIncome: Bool) {
         do {
             let url = try ReportExport.save(
@@ -508,6 +583,8 @@ final class AppModel {
             if let url { statusMessage = tr("Rapport opgeslagen: %@", url.lastPathComponent) }
         } catch { errorMessage = tr("Export mislukt: %@", error.localizedDescription) }
     }
+
+    #endif
 
     private func perform(_ work: () throws -> Void) {
         do { try work(); try context.save() } catch { errorMessage = error.localizedDescription }
@@ -535,7 +612,11 @@ final class AppModel {
                 }
             }.map(\.element)
         active = try? engine.activeEntry()
+        #if os(macOS)
         menuIcon.sync(tracking: active != nil)
+        #else
+        rescheduleNotifications()
+        #endif
 
         let dayStart = cal.startOfDay(for: now)
         let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart)!
@@ -610,12 +691,65 @@ final class AppModel {
             clientName: activeClient?.name ?? tr("een klant"), elapsed: activeElapsed, entryId: active?.id ?? UUID())
     }
 
+    #if os(iOS)
+    private static let scheduledIds = (0..<12).map { "tikk-sched-r-\($0)" } + ["tikk-sched-b80", "tikk-sched-b100"]
+
+    /// iOS suspends the app in the background, so reminders and budget warnings are scheduled ahead as local notifications.
+    func rescheduleNotifications() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: Self.scheduledIds)
+        guard let entry = active, let client = activeClient else { return }
+        let service = NotificationService.shared
+        let now = Date()
+        var scheduled = false
+
+        if ReminderSettings.isEnabled {
+            var fire = entry.startTime.addingTimeInterval(ReminderSettings.first)
+            while fire <= now { fire = fire.addingTimeInterval(ReminderSettings.every) }
+            for i in 0..<12 {
+                service.schedule(id: Self.scheduledIds[i], at: fire, clientName: client.name,
+                                 elapsed: fire.timeIntervalSince(entry.startTime), entryId: entry.id)
+                fire = fire.addingTimeInterval(ReminderSettings.every)
+            }
+            scheduled = true
+        }
+
+        if ProjectsSetting.isEnabled, BudgetAlertSetting.isEnabled, let projectId = entry.projectId,
+           let project = allProjects.first(where: { $0.id == projectId }),
+           let estimate = project.estimatedHours, estimate > 0 {
+            let total = projectSeconds()[projectId] ?? 0
+            let est = estimate.formatted(.number.locale(L10n.language.locale))
+            let toEighty = estimate * 3600 * 0.8 - total
+            let toFull = estimate * 3600 - total
+            if toEighty > 1 {
+                service.scheduleAlert(
+                    id: "tikk-sched-b80", after: toEighty,
+                    title: tr("Project %@: 80%% van de schatting", project.name),
+                    body: tr("Nog %@ uur van de geschatte %@ uur.", Format.short(toFull - toEighty), est))
+            }
+            if toFull > 1 {
+                service.scheduleAlert(
+                    id: "tikk-sched-b100", after: toFull,
+                    title: tr("Project %@: schatting bereikt", project.name),
+                    body: tr("Je hebt de geschatte %@ uur gebruikt.", est), pose: .oeps)
+            }
+            scheduled = true
+        }
+        if scheduled { service.requestPermission() }
+    }
+    #endif
+
     private func tick() {
+        #if os(macOS)
         MenuBarFont.apply()
+        #endif
         now = Date()
+        #if os(macOS)
         menuIcon.sync(tracking: active != nil)
+        #endif
+        #if os(macOS)
         checkReminder()
         checkBudget()
+        #endif
         if active != nil {
             UserDefaults.standard.set(now, forKey: Self.lastSeenKey)
             if Int(now.timeIntervalSince1970) % 60 == 0 { reload() }
@@ -632,6 +766,7 @@ final class AppModel {
         return max(lastSeen, running.startTime)
     }
 
+    #if os(macOS)
     private func observeSleep() {
         let nc = NSWorkspace.shared.notificationCenter
         nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
@@ -662,6 +797,7 @@ final class AppModel {
             perform { try engine.stop(at: since) }
         }
     }
+    #endif
 }
 
 enum Format {
@@ -721,3 +857,13 @@ struct ReportRow: Identifiable {
         return fee * Decimal(months) / Decimal(hours)
     }
 }
+
+#if os(iOS)
+enum AwaySetting {
+    static let enabledKey = "awayPromptEnabled"
+    static let minutesKey = "awayPromptMinutes"
+    static let defaultMinutes = 30
+    static var isEnabled: Bool { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+    static var threshold: TimeInterval { TimeInterval(max(1, UserDefaults.standard.object(forKey: minutesKey) as? Int ?? defaultMinutes)) * 60 }
+}
+#endif

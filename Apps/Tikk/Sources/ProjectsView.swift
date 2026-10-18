@@ -1,10 +1,6 @@
 import SwiftUI
 import LittleWorksCore
 
-func money(_ d: Decimal) -> String {
-    d.formatted(.number.precision(.fractionLength(2)).locale(L10n.language.locale))
-}
-
 /// Projects of one client, shown under the client in the Clients page.
 struct ClientProjects: View {
     let model: AppModel

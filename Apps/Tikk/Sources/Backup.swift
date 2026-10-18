@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import Foundation
 import SwiftData
 import UniformTypeIdentifiers
@@ -95,6 +97,7 @@ enum Backup {
         try context.save()
     }
 
+    #if os(macOS)
     /// Asks where to save and in which format, then writes the file.
     @MainActor
     static func export(from context: ModelContext) throws -> URL? {
@@ -111,8 +114,10 @@ enum Backup {
         try data(for: file, format: picker.selected).write(to: url, options: .atomic)
         return url
     }
+    #endif
 }
 
+#if os(macOS)
 /// Format popup inside the save panel.
 @MainActor
 private final class FormatPicker: NSObject {
@@ -144,3 +149,4 @@ private final class FormatPicker: NSObject {
         panel.nameFieldStringValue = "\(baseName).\(selected.rawValue)"
     }
 }
+#endif

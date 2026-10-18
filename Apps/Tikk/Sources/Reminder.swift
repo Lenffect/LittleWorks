@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import Foundation
 import UserNotifications
 
@@ -60,6 +62,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate, @un
 
     /// Adds a Tikk pose as the notification image (the app icon alone can show up blank for unsigned builds).
     private static func attach(_ pose: TikkPose, to content: UNMutableNotificationContent) {
+        #if os(macOS)
         let side = 256
         guard let source = NSImage(named: pose.rawValue),
               let rep = NSBitmapImageRep(
@@ -76,7 +79,32 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate, @un
         guard (try? png.write(to: url)) != nil,
               let attachment = try? UNNotificationAttachment(identifier: "pose", url: url) else { return }
         content.attachments = [attachment]
+        #endif
     }
+
+    #if os(iOS)
+    /// Schedules a "still working?" reminder for a moment in the future.
+    func schedule(id: String, at date: Date, clientName: String, elapsed: TimeInterval, entryId: UUID) {
+        let content = UNMutableNotificationContent()
+        content.title = tr("Werk je nog aan %@?", clientName)
+        content.body = tr("De timer loopt al %@ uur.", Format.short(elapsed))
+        content.sound = .default
+        content.categoryIdentifier = Self.category
+        content.userInfo = ["entryId": entryId.uuidString]
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+
+    /// Schedules a plain notification `seconds` from now (project budget warnings).
+    func scheduleAlert(id: String, after seconds: TimeInterval, title: String, body: String, pose: TikkPose = .master) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+    #endif
 
     /// Plain notification without actions, for project budget warnings.
     func sendAlert(title: String, body: String, id: String, pose: TikkPose = .master) {
