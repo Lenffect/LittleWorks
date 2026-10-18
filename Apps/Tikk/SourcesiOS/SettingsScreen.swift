@@ -90,6 +90,8 @@ struct SettingsScreen: View {
                     Toggle("Vraag om een notitie bij stoppen", isOn: $askNote)
                 }
 
+                Section { IconPicker() }
+
                 Section {
                     HStack(spacing: 12) {
                         TikkFigure(pose: .master, scale: 3)

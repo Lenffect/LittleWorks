@@ -57,6 +57,7 @@ targets:
           - XLSXExport.swift
       - SourcesiOS
       - Resources
+      - ResourcesiOS
     dependencies:
       - package: LittleWorksCore
     info:
@@ -73,8 +74,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: nl.littleworks.tikk.ios
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: ""   # fill in your Personal Team ID to run on a real iPhone
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: TikkOranje
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "TikkLicht TikkDonker TikkZwartWit TikkNacht TikkGlas TikkMint TikkHemel"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
